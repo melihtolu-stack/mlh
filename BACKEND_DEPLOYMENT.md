@@ -6,23 +6,23 @@ Backend (Python FastAPI) ayrı bir servis olarak Coolify'da deploy edilmelidir.
 
 ## 1. Coolify'da Yeni Servis Oluşturma
 
-1. Coolify Dashboard → **New Application**
+**ÇÖZÜM: Root'ta Dockerfile.backend kullanın**
+
+1. Coolify Dashboard → **New Application** (veya mevcut backend servisini düzenleyin)
 2. **Repository**: `melihtolu-stack/mlh` (aynı repo)
 3. **Build Pack**: Docker
-4. **Dockerfile Path**: `backend/Dockerfile`
-5. **Build Context**: `backend` (ÖNEMLİ! Bu ayarı ekleyin)
-6. **Port**: `8000`
-7. **Branch**: `main`
+4. **Dockerfile Path**: `Dockerfile.backend` ⚠️ (root'ta, nokta ile!)
+5. **Port**: `8000`
+6. **Branch**: `main`
 
-### ⚠️ ÖNEMLİ: Build Context Ayarı
+### ⚠️ ÖNEMLİ: Dockerfile Path Formatı
 
-Coolify'da **"Build Context"** veya **"Working Directory"** ayarını `backend` olarak ayarlayın. Eğer bu ayar yoksa:
+Coolify'da Dockerfile path'i yazarken:
+- ✅ **DOĞRU**: `Dockerfile.backend` (root'ta, nokta ile)
+- ❌ **YANLIŞ**: `backend/Dockerfile` (Coolify bunu dizin olarak yorumluyor)
+- ❌ **YANLIŞ**: `backend.Dockerfile` (Coolify bunu da dizin olarak yorumluyor)
 
-**Alternatif Yöntem:** Root'ta `backend.Dockerfile` oluşturun ve Coolify'da:
-- **Dockerfile Path**: `backend.Dockerfile`
-- **Build Context**: `.` (root)
-
-Sonra `backend.Dockerfile` içinde `WORKDIR /app` ve `COPY` komutlarını `backend/` prefix'i ile kullanın.
+`Dockerfile.backend` dosyası root'ta ve `backend/` klasöründen dosyaları kopyalıyor.
 
 ## 2. Environment Variables
 
