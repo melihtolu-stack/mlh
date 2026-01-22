@@ -75,9 +75,18 @@ export async function POST(request: Request) {
     const contentType = request.headers.get('content-type') ?? ''
     let payload: IncomingPayload | null = null
     let recipient: string | null = null
+    let rawBody: unknown = null
 
     if (contentType.includes('application/json')) {
-      const body = await request.json()
+      rawBody = await request.json()
+      
+      // Handle N8N array format: [{...}] -> {...}
+      let body = rawBody
+      if (Array.isArray(rawBody) && rawBody.length > 0) {
+        body = rawBody[0]
+        console.log('N8N array format detected, using first element')
+      }
+      
       payload = validateOurFormat(body)
       recipient = (body && typeof body === 'object' && typeof (body as Record<string, unknown>).recipient === 'string')
         ? (body as Record<string, unknown>).recipient as string
@@ -90,6 +99,7 @@ export async function POST(request: Request) {
       recipient = form['recipient'] ?? form['To'] ?? null
       payload = normalizeMailgunForm(form)
     } else {
+      console.error('Unsupported Content-Type:', contentType)
       return NextResponse.json(
         { error: 'Unsupported Content-Type. Use application/json or application/x-www-form-urlencoded.' },
         { status: 400 }
@@ -97,6 +107,7 @@ export async function POST(request: Request) {
     }
 
     if (!payload) {
+      console.error('Invalid payload received:', JSON.stringify(rawBody).substring(0, 500))
       return NextResponse.json(
         { error: 'Invalid payload. Required: from_email, subject, body (or Mailgun sender, subject, body-plain/body-html).' },
         { status: 400 }
@@ -114,29 +125,46 @@ export async function POST(request: Request) {
     }
 
     if (!BACKEND_URL) {
+      console.error('BACKEND_URL is not configured')
       return NextResponse.json(
         { error: 'BACKEND_URL is not configured. Email webhook requires backend.' },
         { status: 503 }
       )
     }
 
+    const backendPayload = {
+      from_email: payload.from_email,
+      from_name: payload.from_name ?? null,
+      subject: payload.subject,
+      body: payload.body,
+      html_body: payload.html_body ?? null,
+      headers: payload.headers ?? {},
+    }
+
+    console.log('Forwarding to backend:', BACKEND_URL, 'Payload:', JSON.stringify(backendPayload).substring(0, 200))
+
     const backendRes = await fetch(`${BACKEND_URL.replace(/\/$/, '')}/api/emails/incoming`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from_email: payload.from_email,
-        from_name: payload.from_name ?? null,
-        subject: payload.subject,
-        body: payload.body,
-        html_body: payload.html_body ?? null,
-        headers: payload.headers ?? {},
-      }),
+      body: JSON.stringify(backendPayload),
     })
 
-    const data = await backendRes.json().catch(() => ({}))
-    if (!backendRes.ok) {
+    const responseText = await backendRes.text()
+    let data: unknown = {}
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      console.error('Backend returned non-JSON response:', responseText.substring(0, 500))
       return NextResponse.json(
-        { error: data.detail ?? data.error ?? 'Backend failed to process email' },
+        { error: `Backend returned invalid response: ${responseText.substring(0, 100)}` },
+        { status: 500 }
+      )
+    }
+
+    if (!backendRes.ok) {
+      console.error('Backend error:', backendRes.status, data)
+      return NextResponse.json(
+        { error: (data as { detail?: string; error?: string }).detail ?? (data as { error?: string }).error ?? 'Backend failed to process email' },
         { status: backendRes.status }
       )
     }
@@ -144,8 +172,9 @@ export async function POST(request: Request) {
     return NextResponse.json(data)
   } catch (e) {
     console.error('Email incoming webhook error:', e)
+    const errorMessage = e instanceof Error ? e.message : String(e)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: errorMessage },
       { status: 500 }
     )
   }

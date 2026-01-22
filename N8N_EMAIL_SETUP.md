@@ -94,10 +94,15 @@ https://<siteniz>/api/emails/incoming
 ### Authentication
 None (public endpoint)
 
-### Body Content Type
-`JSON`
+### Options (ÖNEMLİ!)
+- **Send Body**: ✅ **Açık** olmalı
+- **Body Content Type**: `JSON`
+- **Specify Body**: `Using JSON` veya `Using Fields`
 
-### Body (JSON)
+### Body (JSON) - Seçenek 1: Using JSON
+
+**Specify Body** → **Using JSON** seçin ve şunu yapıştırın:
+
 ```json
 {
   "from_email": "{{ $json.from_email }}",
@@ -107,6 +112,37 @@ None (public endpoint)
   "html_body": "{{ $json.html_body }}"
 }
 ```
+
+### Body (Fields) - Seçenek 2: Using Fields
+
+**Specify Body** → **Using Fields** seçin ve şu field'ları ekleyin:
+
+| Name | Value |
+|------|-------|
+| `from_email` | `{{ $json.from_email }}` |
+| `from_name` | `{{ $json.from_name }}` |
+| `subject` | `{{ $json.subject }}` |
+| `body` | `{{ $json.body }}` |
+| `html_body` | `{{ $json.html_body }}` |
+
+### ⚠️ ÖNEMLİ: Array Formatı Sorunu
+
+Eğer N8N body'yi array olarak gönderiyorsa (`[{...}]`), endpoint otomatik olarak ilk elementi alır. Ama daha iyi bir çözüm için:
+
+**HTTP Request node'unda:**
+- **Send Body**: ✅ Açık
+- **Body Content Type**: `JSON`
+- **Specify Body**: `Using JSON` kullanın (Using Fields yerine)
+
+Veya Set node'dan sonra bir **Code** node ekleyip array'i object'e çevirin:
+
+```javascript
+// Code node - Array'i Object'e çevir
+const items = $input.all();
+return items.map(item => item.json);
+```
+
+Sonra HTTP Request'te `{{ $json }}` kullanın.
 
 ---
 
