@@ -28,6 +28,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
+  const [channelFilter, setChannelFilter] = useState<'all' | 'email' | 'whatsapp'>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -128,11 +129,18 @@ export default function HomePage() {
     }
   }
 
-  const filteredConversations = conversations.filter((conv) =>
-    conv.customers.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.customers.phone.includes(searchQuery) ||
-    conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredConversations = conversations.filter((conv) => {
+    const matchesSearch =
+      conv.customers.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.customers.phone?.includes(searchQuery) ||
+      conv.customers.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.last_message?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesChannel =
+      channelFilter === 'all' ||
+      (channelFilter === 'email' && conv.channel === 'email') ||
+      (channelFilter === 'whatsapp' && conv.channel === 'whatsapp')
+    return matchesSearch && matchesChannel
+  })
 
   return (
     <div className="h-full flex flex-col bg-background pb-16 overflow-hidden">
@@ -193,7 +201,7 @@ export default function HomePage() {
           <div className="relative bg-background border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all">
             <input
               type="text"
-              placeholder="Müşteri, telefon veya mesaj ara..."
+              placeholder="Müşteri, e-posta, telefon veya mesaj ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
@@ -226,6 +234,22 @@ export default function HomePage() {
             <div className="text-xs text-secondary uppercase tracking-wide mb-1 font-semibold">Yeni</div>
             <div className="text-2xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
           </div>
+        </div>
+        {/* Kanal filtresi: Tümü | E-posta | WhatsApp */}
+        <div className="flex gap-2 mt-4">
+          {(['all', 'email', 'whatsapp'] as const).map((ch) => (
+            <button
+              key={ch}
+              onClick={() => setChannelFilter(ch)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                channelFilter === ch
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-secondary hover:bg-gray-200'
+              }`}
+            >
+              {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : 'WhatsApp'}
+            </button>
+          ))}
         </div>
       </div>
 

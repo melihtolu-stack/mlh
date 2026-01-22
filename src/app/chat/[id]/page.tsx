@@ -265,7 +265,13 @@ export default function ChatPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="font-bold text-lg text-gray-900 truncate">{customer.name}</h1>
-                <p className="text-xs text-secondary">Customer Conversation</p>
+                <p className="text-xs text-secondary">
+                  {conversation.channel === 'email' && customer.email
+                    ? customer.email
+                    : conversation.channel === 'whatsapp'
+                    ? customer.phone
+                    : 'Konuşma'}
+                </p>
               </div>
             </Link>
           </div>
