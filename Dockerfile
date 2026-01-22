@@ -24,7 +24,8 @@ COPY src ./src
 
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
+# Note: NODE_ENV should not be set to production during build
+# as it skips devDependencies which are needed for building
 
 # Build the application
 RUN npm run build
