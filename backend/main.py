@@ -19,14 +19,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS ayarları - Bu kısmı ekleyin
+# CORS ayarları
+# Not: allow_credentials=True iken "*" kullanılamaz; sadece belirli origin'ler.
+# Test için geçici olarak ["*"] kullanmak istersen allow_credentials=False yapın.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://mlh.heni.com.tr",           # Frontend production URL
-        "https://backend-mlh.heni.com.tr",   # Backend URL
-        "http://localhost:3000",              # Local development
-        "*"                                   # Geçici olarak tüm origin'lere izin (test için)
+        "https://mlh.heni.com.tr",           # Frontend production
+        "https://backend-mlh.heni.com.tr",   # Backend production
+        "http://localhost:3000",             # Local development
     ],
     allow_credentials=True,
     allow_methods=["*"],
