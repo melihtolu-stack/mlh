@@ -9,3 +9,4 @@ beautifulsoup4
 lxml
 email-validator
 aiohttp
+langdetect
