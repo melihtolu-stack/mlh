@@ -19,10 +19,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
+# CORS ayarları - Bu kısmı ekleyin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Production'da spesifik origin'ler belirtilmeli
+    allow_origins=[
+        "https://mlh.heni.com.tr",           # Frontend production URL
+        "https://backend-mlh.heni.com.tr",   # Backend URL
+        "http://localhost:3000",              # Local development
+        "*"                                   # Geçici olarak tüm origin'lere izin (test için)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
