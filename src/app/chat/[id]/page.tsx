@@ -270,6 +270,8 @@ export default function ChatPage() {
                     ? customer.email
                     : conversation.channel === 'whatsapp'
                     ? customer.phone
+                    : conversation.channel === 'web' && customer.email
+                    ? customer.email
                     : 'Konuşma'}
                 </p>
               </div>

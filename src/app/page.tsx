@@ -28,7 +28,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
-  const [channelFilter, setChannelFilter] = useState<'all' | 'email' | 'whatsapp'>('all')
+  const [channelFilter, setChannelFilter] = useState<'all' | 'email' | 'whatsapp' | 'web'>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -235,9 +235,9 @@ export default function HomePage() {
             <div className="text-2xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
           </div>
         </div>
-        {/* Kanal filtresi: Tümü | E-posta | WhatsApp */}
-        <div className="flex gap-2 mt-4">
-          {(['all', 'email', 'whatsapp'] as const).map((ch) => (
+        {/* Kanal filtresi: Tümü | E-posta | WhatsApp | Web */}
+        <div className="flex gap-2 mt-4 flex-wrap">
+          {(['all', 'email', 'whatsapp', 'web'] as const).map((ch) => (
             <button
               key={ch}
               onClick={() => setChannelFilter(ch)}
@@ -247,7 +247,7 @@ export default function HomePage() {
                   : 'bg-gray-100 text-secondary hover:bg-gray-200'
               }`}
             >
-              {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : 'WhatsApp'}
+              {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : ch === 'whatsapp' ? 'WhatsApp' : 'Web'}
             </button>
           ))}
         </div>
@@ -322,9 +322,11 @@ export default function HomePage() {
                               ? 'bg-blue-100 text-blue-700' 
                               : conv.channel === 'whatsapp'
                               ? 'bg-green-100 text-green-700'
+                              : conv.channel === 'web'
+                              ? 'bg-amber-100 text-amber-700'
                               : 'bg-gray-100 text-secondary'
                           }`}>
-                            {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'email' ? 'Email' : conv.channel}
+                            {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'email' ? 'Email' : conv.channel === 'web' ? 'Web' : conv.channel}
                           </span>
                           {!conv.is_read && (
                             <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-lg font-semibold">
