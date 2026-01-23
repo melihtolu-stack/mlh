@@ -6,23 +6,34 @@ Backend (Python FastAPI) ayrı bir servis olarak Coolify'da deploy edilmelidir.
 
 ## 1. Coolify'da Yeni Servis Oluşturma
 
-**ÇÖZÜM: Root'ta Dockerfile.backend kullanın**
+**ÇÖZÜM: Build Script kullanın (Coolify'ın Dockerfile path bug'ı nedeniyle)**
+
+Coolify'da Dockerfile path ayarı bug'lı görünüyor. Bu yüzden **Build Script** kullanacağız:
 
 1. Coolify Dashboard → **New Application** (veya mevcut backend servisini düzenleyin)
 2. **Repository**: `melihtolu-stack/mlh` (aynı repo)
 3. **Build Pack**: Docker
-4. **Dockerfile Path**: `Dockerfile.backend` ⚠️ (root'ta, nokta ile!)
+4. **Build Script**: `bash build-backend.sh` ⚠️ (Build Script kullanın, Dockerfile Path değil!)
 5. **Port**: `8000`
 6. **Branch**: `main`
 
-### ⚠️ ÖNEMLİ: Dockerfile Path Formatı
+### ⚠️ ÖNEMLİ: Build Script Kullanın
 
-Coolify'da Dockerfile path'i yazarken:
-- ✅ **DOĞRU**: `Dockerfile.backend` (root'ta, nokta ile)
-- ❌ **YANLIŞ**: `backend/Dockerfile` (Coolify bunu dizin olarak yorumluyor)
-- ❌ **YANLIŞ**: `backend.Dockerfile` (Coolify bunu da dizin olarak yorumluyor)
+Coolify'da:
+- ❌ **Dockerfile Path** kullanmayın (bug'lı)
+- ✅ **Build Script** kullanın: `bash build-backend.sh`
 
-`Dockerfile.backend` dosyası root'ta ve `backend/` klasöründen dosyaları kopyalıyor.
+`build-backend.sh` scripti `backend/Dockerfile`'ı kullanarak build yapacak.
+
+### Alternatif: Manuel Build Script
+
+Eğer Coolify'da Build Script çalışmazsa, **Build Command** olarak şunu kullanın:
+
+```bash
+cd backend && docker build -f Dockerfile -t $IMAGE_NAME .
+```
+
+Ve **Dockerfile Path** alanını boş bırakın veya `backend/Dockerfile` yazın.
 
 ## 2. Environment Variables
 
