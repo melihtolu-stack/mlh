@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 
-/**
- * Health check endpoint for deployment monitoring
- * Used by Coolify and other deployment platforms to check if the app is running
- */
+/** Health check – Coolify vb. için. Cache kullanma. */
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
-    // Check if required environment variables are set
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -18,15 +17,14 @@ export async function GET() {
       checks: {
         supabase: {
           configured: !!(supabaseUrl && supabaseAnonKey),
-          url: supabaseUrl ? 'configured' : 'missing'
+          url: supabaseUrl ? 'configured' : 'missing',
+          serviceRole: !!serviceRoleKey
         }
       }
     }
 
-    // Return 200 if healthy, 503 if critical services are missing
-    const statusCode = health.checks.supabase.configured ? 200 : 503
-    
-    return NextResponse.json(health, { status: statusCode })
+    const ok = health.checks.supabase.configured && health.checks.supabase.serviceRole
+    return NextResponse.json(health, { status: ok ? 200 : 503 })
   } catch (error) {
     return NextResponse.json(
       {

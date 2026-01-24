@@ -11,6 +11,13 @@ RUN npm ci
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Build args: Coolify "Build Arguments" veya "Build-time env" ile verin.
+# Runtime'ta da ayni env'ler container'a verilmeli (API route'lar icin).
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # Copy package files and node_modules
 COPY package.json package-lock.json* ./
 COPY --from=deps /app/node_modules ./node_modules
@@ -22,10 +29,7 @@ COPY tailwind.config.ts ./
 COPY postcss.config.mjs ./
 COPY src ./src
 
-# Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
-# Note: NODE_ENV should not be set to production during build
-# as it skips devDependencies which are needed for building
 
 # Build the application
 RUN npm run build

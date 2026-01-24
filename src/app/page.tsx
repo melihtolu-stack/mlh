@@ -31,40 +31,30 @@ export default function HomePage() {
   const [channelFilter, setChannelFilter] = useState<'all' | 'email' | 'whatsapp' | 'web'>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   useEffect(() => {
     fetchConversations()
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('conversations-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversations'
-        },
-        () => {
-          fetchConversations()
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages'
-        },
-        () => {
-          fetchConversations()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+    // Subscribe to realtime updates (try/catch: placeholder Supabase local'de crash etmesin)
+    try {
+      const channel = supabase
+        .channel('conversations-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'conversations' },
+          () => fetchConversations()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'messages' },
+          () => fetchConversations()
+        )
+        .subscribe()
+      return () => { supabase.removeChannel(channel) }
+    } catch {
+      return () => {}
     }
   }, [])
 
@@ -79,6 +69,7 @@ export default function HomePage() {
 
   const fetchConversations = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true)
+    setFetchError(null)
     try {
       const response = await fetch('/api/conversations', {
         cache: 'no-store',
@@ -87,9 +78,20 @@ export default function HomePage() {
       if (response.ok) {
         const data = await response.json()
         setConversations(Array.isArray(data) ? data : [])
+      } else {
+        const t = await response.text()
+        let msg = `HTTP ${response.status}`
+        try {
+          const j = JSON.parse(t)
+          msg = (j.error || j.details || msg) as string
+        } catch { /* ignore */ }
+        setFetchError(msg)
+        setConversations([])
       }
     } catch (error) {
       console.error('Error fetching conversations:', error)
+      setFetchError('Baglanti hatasi')
+      setConversations([])
     } finally {
       setLoading(false)
       if (isManualRefresh) setRefreshing(false)
@@ -200,7 +202,10 @@ export default function HomePage() {
                 <span className="text-xl">💼</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">mlh CRM</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-gray-900">mlh CRM</h1>
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary" title="Yeni deployda bu görünür">Build v2</span>
+                </div>
                 <p className="text-xs text-secondary">Müşteri Yönetimi</p>
               </div>
             </div>
@@ -292,6 +297,23 @@ export default function HomePage() {
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-secondary">Yükleniyor...</div>
+          </div>
+        ) : fetchError ? (
+          <div className="flex flex-col items-center justify-center h-64 px-4">
+            <div className="w-20 h-20 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="text-gray-700 font-semibold text-lg text-center mb-1">Veriler yüklenemedi</div>
+            <div className="text-sm text-red-600 text-center mb-4">{fetchError}</div>
+            <button
+              type="button"
+              onClick={() => fetchConversations(true)}
+              className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90"
+            >
+              Tekrar dene
+            </button>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 px-4">
