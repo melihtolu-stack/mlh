@@ -116,3 +116,29 @@ If none of these work, the issue might be:
 - Port conflict with another app
 - Firewall/antivirus blocking localhost
 - Corrupted node_modules (delete and reinstall: `rm -rf node_modules package-lock.json && npm install`)
+
+---
+
+## REST ile yazılanlar Supabase’de görünüyor ama CRM’de yok
+
+**Sebep:** CRM, `conversations` + `customers` tablolarını kullanır. REST `POST /api/leads` hem `leads` tablosuna yazar hem de CRM için `customers` → `conversations` → `messages` oluşturur. Veri Supabase’de (ör. `leads`) var ama CRM’de yoksa genelde şunlardan biri:
+
+1. **Farklı Supabase projesi**  
+   Backend `SUPABASE_URL`, Next.js `NEXT_PUBLIC_SUPABASE_URL` (veya `SUPABASE_URL`) **aynı projeyi** göstermeli. Farklıysa backend bir projeye yazar, CRM diğerinden okur.
+
+   - `.env` / `backend/.env`: `SUPABASE_URL=...`  
+   - `.env.local`: `NEXT_PUBLIC_SUPABASE_URL=...` ve `SUPABASE_SERVICE_ROLE_KEY=...`  
+   - İkisinde de **aynı Supabase proje URL’i** olmalı.
+
+2. **Migration eksik**  
+   `messages` için `original_content`, `translated_content` alanları gerekli. Migration çalışmamışsa lead CRM’e eklenirken hata alınır (lead yine `leads`’e yazılır).
+
+   - `supabase/migrations/add_translation_fields.sql` çalıştırıldığından emin olun.
+
+3. **`POST /api/lead-contacts` kullanıyorsanız**  
+   Bu endpoint sadece `lead_contacts` tablosuna yazar. CRM **conversations** listeler; lead-contacts CRM’de görünmez. CRM’de görünsün istiyorsanız **`POST /api/leads`** kullanın (name, email, message zorunlu).
+
+4. **Web kanalı filtresi**  
+   CRM’de “Web” filtresi seçiliyse yalnızca `channel = 'web'` konuşmalar listelenir. “Tümü” ile deneyin.
+
+**Kontrol:** Backend loglarında `Lead CRM'e eklenirken hata` uyarısı varsa, mesajda migration veya Supabase proje eşleşmesi ipucu olabilir.

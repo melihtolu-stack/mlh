@@ -118,7 +118,17 @@ def create_lead(data: LeadCreate) -> dict:
                 }).eq("id", conv["id"]).execute()
                 logger.info("Lead CRM’e eklendi: conversation_id=%s", conv["id"])
         except Exception as e:
-            logger.warning("Lead CRM’e eklenirken hata (lead yine kaydedildi): %s", e)
+            err_msg = str(e).lower()
+            hint = ""
+            if "column" in err_msg and ("does not exist" in err_msg or "original_content" in err_msg or "translated_content" in err_msg):
+                hint = " supabase/migrations/add_translation_fields.sql calıştırıldı mı?"
+            elif "relation" in err_msg or "connection" in err_msg or "supabase" in err_msg:
+                hint = " Backend SUPABASE_URL ile Next.js NEXT_PUBLIC_SUPABASE_URL aynı projeyi göstermeli."
+            logger.warning(
+                "Lead CRM'e eklenirken hata (lead yine kaydedildi): %s.%s",
+                e,
+                hint,
+            )
 
         # Opsiyonel: email servisi varsa info@heni.com.tr'ye bildirim
         try:

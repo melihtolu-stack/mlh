@@ -138,7 +138,8 @@ export default function HomePage() {
     const matchesChannel =
       channelFilter === 'all' ||
       (channelFilter === 'email' && conv.channel === 'email') ||
-      (channelFilter === 'whatsapp' && conv.channel === 'whatsapp')
+      (channelFilter === 'whatsapp' && conv.channel === 'whatsapp') ||
+      (channelFilter === 'web' && conv.channel === 'web')
     return matchesSearch && matchesChannel
   })
 
