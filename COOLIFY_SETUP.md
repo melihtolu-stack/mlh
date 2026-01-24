@@ -53,8 +53,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 
 2. **Health**  
    `https://your-domain.com/api/health`  
-   - 200 + `"supabase": { "configured": true }` → env tamam.  
-   - 503 veya `configured: false` → `NEXT_PUBLIC_*` / `SUPABASE_SERVICE_ROLE_KEY` eksik veya yanlış.
+   - 200 + `"build": "v2"` + `checks` hepsi `true` → env tamam, güncel deploy.  
+   - 503 veya `"eksik": [...]` → Coolify **Frontend** servisi → **Environment** → eksik değişkenleri ekleyin, **Redeploy**.
 
 3. **Veriler gelmiyor / hata**  
    - CRM’de **“Veriler yüklenemedi”** + hata mesajı görünüyorsa API hata veriyor (genelde 503).  
@@ -63,6 +63,18 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 4. **Yenile butonu**  
    - Header’da mavi **“Yenile”** butonu olmalı.  
    - Görünmüyorsa yine **Build v2** yok demektir → cache’siz rebuild.
+
+---
+
+## Health 503 veya "eksik" görüyorsanız
+
+1. Coolify → **Frontend (Next.js)** servisi → **Environment** / **Variables**.
+2. Şu **üç** değişken **mutlaka** tanımlı olsun (Supabase Dashboard → Settings → API’den alın):
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://xxxxx.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGc...` (anon public)
+   - `SUPABASE_SERVICE_ROLE_KEY` = `eyJhbGc...` (service_role, gizli tutun)
+3. **Kaydet** → **Redeploy** (mümkünse **Build without cache**).
+4. Tekrar `/api/health` kontrol et; `eksik` boş, hepsi `true` olmalı.
 
 ---
 

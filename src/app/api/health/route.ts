@@ -5,25 +5,30 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const urlSet = !!(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim())
+    const anonKeySet = !!(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim())
+    const serviceRoleSet = !!(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
+    const ok = urlSet && anonKeySet && serviceRoleSet
+
+    const missing: string[] = []
+    if (!urlSet) missing.push('NEXT_PUBLIC_SUPABASE_URL')
+    if (!anonKeySet) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    if (!serviceRoleSet) missing.push('SUPABASE_SERVICE_ROLE_KEY')
 
     const health = {
-      status: 'healthy',
+      build: 'v2',
+      status: ok ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
       checks: {
-        supabase: {
-          configured: !!(supabaseUrl && supabaseAnonKey),
-          url: supabaseUrl ? 'configured' : 'missing',
-          serviceRole: !!serviceRoleKey
-        }
-      }
+        NEXT_PUBLIC_SUPABASE_URL: urlSet,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKeySet,
+        SUPABASE_SERVICE_ROLE_KEY: serviceRoleSet
+      },
+      ...(missing.length ? { eksik: missing, hint: `Coolify Frontend env: ${missing.join(', ')} ekleyin.` } : {})
     }
 
-    const ok = health.checks.supabase.configured && health.checks.supabase.serviceRole
     return NextResponse.json(health, { status: ok ? 200 : 503 })
   } catch (error) {
     return NextResponse.json(
