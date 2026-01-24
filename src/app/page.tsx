@@ -30,6 +30,7 @@ export default function HomePage() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [channelFilter, setChannelFilter] = useState<'all' | 'email' | 'whatsapp' | 'web'>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   useEffect(() => {
@@ -67,17 +68,31 @@ export default function HomePage() {
     }
   }, [])
 
-  const fetchConversations = async () => {
+  // Sekmeye donuldugunde veya Supabase'den disaridan silme yapildiysa liste yenilensin
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible') fetchConversations()
+    }
+    document.addEventListener('visibilitychange', handler)
+    return () => document.removeEventListener('visibilitychange', handler)
+  }, [])
+
+  const fetchConversations = async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true)
     try {
-      const response = await fetch('/api/conversations')
+      const response = await fetch('/api/conversations', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      })
       if (response.ok) {
         const data = await response.json()
-        setConversations(data)
+        setConversations(Array.isArray(data) ? data : [])
       }
     } catch (error) {
       console.error('Error fetching conversations:', error)
     } finally {
       setLoading(false)
+      if (isManualRefresh) setRefreshing(false)
     }
   }
 
@@ -189,8 +204,25 @@ export default function HomePage() {
                 <p className="text-xs text-secondary">Müşteri Yönetimi</p>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer">
-              <span className="text-xl">🔔</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchConversations(true)}
+                disabled={refreshing}
+                className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer disabled:opacity-50"
+                title="Listeyi yenile"
+              >
+                {refreshing ? (
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+              </button>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+                <span className="text-xl">🔔</span>
+              </div>
             </div>
           </div>
         </div>

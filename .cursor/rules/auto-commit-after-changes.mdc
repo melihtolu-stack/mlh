@@ -1,0 +1,20 @@
+---
+description: Her kod degisikligi sonrasi commit at; deploy oncesi guncel olmasi icin.
+alwaysApply: true
+---
+
+# Otomatik commit sonrasi
+
+Kod degisikligi yaptiktan sonra **mutlaka commit at**.
+
+1. **Stage**: Degisen dosyalari ekle. `__pycache__/`, `.next/`, `node_modules/` ekleme.
+2. **Commit**: Anlamli bir mesajla commit et (ornek: `fix: CRM cache kapat`, `feat: yenile butonu`).
+3. **Basarisiz olursa**: `index.lock` vb. nedeniyle commit calismazsa, kullaniciya tam komutlari ver:
+   ```powershell
+   cd c:\Users\DELL\Desktop\mlh
+   git add <degisen-dosyalar>
+   git commit -m "..."
+   git push origin master
+   ```
+
+Boylece kullanici sadece redeploy yaparak guncel kodu canliya alabilsin.
