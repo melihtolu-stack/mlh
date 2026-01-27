@@ -8,7 +8,7 @@
 ```
 **Yeni kod canliya cikmamis.** `build: "v2"`, `eksik`, vs. yoksa Coolify **eski image**i calistiriyor.
 
-### Yapilacaklar (sira onemli)
+### Yapilacaklar (sira onemli) – Push + Rebuild
 
 1. **Push**
    ```bash
