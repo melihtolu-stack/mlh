@@ -17,7 +17,7 @@ let qrCode = null;
 // Initialize WhatsApp client
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: './whatsapp-session'
+    dataPath: './data'
   }),
   puppeteer: {
     headless: true,
