@@ -8,13 +8,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#2563EB", // Canlı mavi
+        primary: "#1a365d", // Navy Blue (Finance-app style)
         success: "#10B981", // Canlı yeşil
         warning: "#F59E0B", // Canlı turuncu
         danger: "#EF4444", // Canlı kırmızı
         secondary: "#6B7280",
-        background: "#F9FAFB",
-        accent: "#8B5CF6", // Canlı mor
+        background: "#FFFFFF", // Pure white background
+        accent: "#1a365d", // Navy Blue accent
       },
     },
   },

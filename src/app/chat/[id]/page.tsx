@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
+import { ArrowLeft, Send } from "lucide-react"
 
 interface Message {
   id: string
@@ -209,10 +210,10 @@ export default function ChatPage() {
   const customer = conversation.customers
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-white">
       {/* Notification Toast */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 ${
+        <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
           notification.type === 'success' 
             ? 'bg-green-50 border border-green-200 text-green-800' 
             : 'bg-red-50 border border-red-200 text-red-800'
@@ -241,31 +242,29 @@ export default function ChatPage() {
         </div>
       )}
       
-      {/* Header - Enterprise Style */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="px-6 py-4">
-          <div className="flex items-center gap-4">
+      {/* Fixed Header - Finance App Style */}
+      <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 header-shadow z-40">
+        <div className="px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="flex-shrink-0 p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex-shrink-0 p-2 -ml-2 hover:bg-primary/10 rounded-xl transition-colors"
               aria-label="Geri dön"
             >
-              <svg className="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ArrowLeft className="text-primary" size={20} strokeWidth={2.5} />
             </button>
 
             <Link href={`/profile/${customer.id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-              <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 border-2 border-gray-200 overflow-hidden flex-shrink-0 shadow-sm">
                 <img
-                  src={customer.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(customer.name)}&background=1A3668&color=fff&size=128`}
+                  src={customer.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(customer.name)}&background=1a365d&color=fff&size=128`}
                   alt={customer.name}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="font-bold text-lg text-gray-900 truncate">{customer.name}</h1>
-                <p className="text-xs text-secondary">
+                <h1 className="font-bold text-base sm:text-lg text-gray-900 truncate">{customer.name}</h1>
+                <p className="text-xs text-secondary truncate">
                   {conversation.channel === 'email' && customer.email
                     ? customer.email
                     : conversation.channel === 'whatsapp'
@@ -280,39 +279,42 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Messages - Panel Style */}
-      <div className="flex-1 overflow-y-auto bg-background">
-        <div className="max-w-4xl mx-auto px-6 py-6">
+      {/* Spacer for fixed header - responsive height */}
+      <div className="h-[60px] sm:h-[72px]"></div>
+
+      {/* Messages - Panel Style with proper padding */}
+      <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 sm:py-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-secondary">Mesajlar yükleniyor...</div>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 px-4">
-              <div className="w-20 h-20 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center mb-4">
+              <div className="w-20 h-20 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center mb-4 shadow-sm">
                 <svg className="w-10 h-10 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <div className="text-gray-700 font-medium text-center mb-1">Henüz mesaj yok</div>
+              <div className="text-gray-700 font-semibold text-center mb-1">Henüz mesaj yok</div>
               <div className="text-sm text-secondary text-center">İlk mesajınızı gönderin</div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[75%] px-4 py-3 rounded-xl shadow-sm border ${
+                    className={`max-w-[75%] px-4 py-3 rounded-2xl shadow-md border ${
                       msg.sender === 'agent'
-                        ? 'bg-success text-white border-success/20'
+                        ? 'bg-primary text-white border-primary/20'
                         : 'bg-white text-gray-900 border-gray-200 hover:border-gray-300 transition-colors'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
-                    <span className={`text-xs mt-2 block ${msg.sender === 'agent' ? 'text-right opacity-80' : 'text-secondary'}`}>
+                    <span className={`text-xs mt-2 block ${msg.sender === 'agent' ? 'text-right opacity-90' : 'text-secondary'}`}>
                       {formatTime(msg.sent_at)}
                     </span>
                   </div>
@@ -324,11 +326,11 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Input - Enterprise Style */}
-      <div className="bg-white border-t border-gray-200 shadow-sm safe-area-pb">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-end gap-3">
-            <div className="flex-1 bg-background border border-gray-200 rounded-xl px-4 py-3 min-h-[48px] flex items-center focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all">
+      {/* Input - Finance App Style with better mobile support */}
+      <div className="bg-white border-t border-gray-200 shadow-lg safe-area-pb">
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-end gap-2 sm:gap-3">
+            <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] flex items-center focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all shadow-sm">
               <input
                 type="text"
                 value={input}
@@ -347,15 +349,13 @@ export default function ChatPage() {
             <button
               onClick={sendMessage}
               disabled={sending || !input.trim()}
-              className="bg-success text-white px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-success/90 transition-colors flex-shrink-0 font-medium text-sm shadow-sm"
+              className="bg-primary text-white p-2.5 sm:p-3 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all flex-shrink-0 shadow-md"
               aria-label="Mesaj gönder"
             >
               {sending ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                <Send size={20} strokeWidth={2.5} />
               )}
             </button>
           </div>

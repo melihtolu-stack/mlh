@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import "../styles/globals.css"
 
 export const metadata: Metadata = {
-  title: "HENI CRM",
-  description: "WhatsApp-Style CRM",
+  title: "MLH CRM - Bilgi Yönetim Sistemi",
+  description: "Modern Bilgi Yönetim Sistemi",
 }
 
 export default function RootLayout({

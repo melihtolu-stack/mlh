@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import BottomNav from "@/components/BottomNav"
+import { RefreshCw } from "lucide-react"
 
 interface Customer {
   id: string
@@ -33,6 +34,12 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  
+  // Pull-to-refresh state
+  const [pullStartY, setPullStartY] = useState(0)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isPulling, setIsPulling] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchConversations()
@@ -98,6 +105,38 @@ export default function HomePage() {
     }
   }
 
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const scrollContainer = scrollContainerRef.current
+    if (scrollContainer && scrollContainer.scrollTop === 0) {
+      setPullStartY(e.touches[0].clientY)
+      setIsPulling(true)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling) return
+    
+    const scrollContainer = scrollContainerRef.current
+    if (scrollContainer && scrollContainer.scrollTop === 0) {
+      const currentY = e.touches[0].clientY
+      const distance = currentY - pullStartY
+      
+      if (distance > 0 && distance < 150) {
+        setPullDistance(distance)
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 80) {
+      fetchConversations(true)
+    }
+    setIsPulling(false)
+    setPullDistance(0)
+    setPullStartY(0)
+  }
+
   const formatTime = (dateString: string | null) => {
     if (!dateString) return ''
     const date = new Date(dateString)
@@ -161,10 +200,10 @@ export default function HomePage() {
   })
 
   return (
-    <div className="h-full flex flex-col bg-background pb-16 overflow-hidden">
+    <div className="h-full flex flex-col bg-white pb-16 overflow-hidden">
       {/* Notification Toast */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
           notification.type === 'success' 
             ? 'bg-green-50 border border-green-200 text-green-800' 
             : 'bg-red-50 border border-red-200 text-red-800'
@@ -193,234 +232,249 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Enterprise Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-        <div className="px-6 py-4">
+      {/* Pull-to-refresh indicator */}
+      {isPulling && pullDistance > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 flex items-center justify-center bg-white z-40 transition-all"
+          style={{ height: `${Math.min(pullDistance, 80)}px` }}
+        >
+          <RefreshCw 
+            className={`text-primary transition-transform ${pullDistance > 80 ? 'pull-refresh-spinner' : ''}`}
+            size={24}
+            style={{ transform: `rotate(${pullDistance * 2}deg)` }}
+          />
+        </div>
+      )}
+
+      {/* Fixed Header - Only Title and Refresh Button */}
+      <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 header-shadow z-50">
+        <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm">
                 <span className="text-xl">💼</span>
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-gray-900">mlh CRM</h1>
-                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary" title="Yeni deployda bu görünür">Build v2</span>
-                </div>
-                <p className="text-xs text-secondary">Müşteri Yönetimi</p>
+                <h1 className="text-lg font-bold text-gray-900">MLH CRM</h1>
+                <p className="text-xs text-secondary">Bilgi Yönetim Sistemi</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fetchConversations(true)}
-                disabled={refreshing}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
-                title="Listeyi yenile"
-              >
-                {refreshing ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                )}
-                <span>Yenile</span>
-              </button>
-              <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
-                <span className="text-xl">🔔</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => fetchConversations(true)}
+              disabled={refreshing}
+              className="p-2.5 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Listeyi yenile"
+              aria-label="Refresh"
+            >
+              <RefreshCw 
+                className={`${refreshing ? 'animate-spin' : ''}`}
+                size={20}
+              />
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Search Bar - Enterprise Style */}
-      <div className="px-6 py-4 bg-white border-b border-gray-200">
-        <div className="relative">
-          <div className="relative bg-background border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all">
-            <input
-              type="text"
-              placeholder="Müşteri, e-posta, telefon veya mesaj ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              className="w-full pl-12 pr-4 py-3 bg-transparent outline-none text-sm placeholder:text-secondary text-gray-900 rounded-xl"
-            />
-            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-secondary">
-              🔍
-            </span>
-            {searchQuery && (
+      {/* Spacer for fixed header */}
+      <div className="h-[64px]"></div>
+
+      {/* Scrollable Content Area */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Search Bar - Finance App Style */}
+        <div className="px-6 py-4 bg-white">
+          <div className="relative">
+            <div className="relative bg-gray-50 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
+              <input
+                type="text"
+                placeholder="Müşteri, e-posta, telefon veya mesaj ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="w-full pl-12 pr-4 py-3 bg-transparent outline-none text-sm placeholder:text-secondary text-gray-900 rounded-xl"
+              />
+              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-secondary">
+                🔍
+              </span>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-lg bg-gray-200 text-secondary flex items-center justify-center text-xs hover:bg-gray-300 transition-colors"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards - Finance App Style */}
+        <div className="px-6 py-4 bg-white">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-xs text-secondary uppercase tracking-wide mb-2 font-semibold">Toplam</div>
+              <div className="text-3xl font-bold text-gray-900">{conversations.length}</div>
+            </div>
+            <div className="bg-gradient-to-br from-primary/5 to-white border border-primary/20 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-xs text-primary uppercase tracking-wide mb-2 font-semibold">Yeni</div>
+              <div className="text-3xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
+            </div>
+          </div>
+          {/* Kanal filtresi: Tümü | E-posta | WhatsApp | Web */}
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {(['all', 'email', 'whatsapp', 'web'] as const).map((ch) => (
               <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-lg bg-gray-200 text-secondary flex items-center justify-center text-xs hover:bg-gray-300 transition-colors"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards - Enterprise Style */}
-      <div className="px-6 py-4 bg-white border-b border-gray-200">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-xs text-secondary uppercase tracking-wide mb-1 font-semibold">Toplam</div>
-            <div className="text-2xl font-bold text-gray-900">{conversations.length}</div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-xs text-secondary uppercase tracking-wide mb-1 font-semibold">Yeni</div>
-            <div className="text-2xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
-          </div>
-        </div>
-        {/* Kanal filtresi: Tümü | E-posta | WhatsApp | Web */}
-        <div className="flex gap-2 mt-4 flex-wrap">
-          {(['all', 'email', 'whatsapp', 'web'] as const).map((ch) => (
-            <button
-              key={ch}
-              onClick={() => setChannelFilter(ch)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                channelFilter === ch
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-secondary hover:bg-gray-200'
-              }`}
-            >
-              {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : ch === 'whatsapp' ? 'WhatsApp' : 'Web'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Conversations List - Enterprise Cards */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-secondary">Yükleniyor...</div>
-          </div>
-        ) : fetchError ? (
-          <div className="flex flex-col items-center justify-center h-64 px-4">
-            <div className="w-20 h-20 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center mb-4">
-              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div className="text-gray-700 font-semibold text-lg text-center mb-1">Veriler yüklenemedi</div>
-            <div className="text-sm text-red-600 text-center mb-4">{fetchError}</div>
-            <button
-              type="button"
-              onClick={() => fetchConversations(true)}
-              className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90"
-            >
-              Tekrar dene
-            </button>
-          </div>
-        ) : filteredConversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 px-4">
-            <div className="w-20 h-20 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center mb-4">
-              <svg className="w-10 h-10 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <div className="text-gray-700 font-semibold text-lg text-center mb-1">
-              {searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz konuşma yok'}
-            </div>
-            <div className="text-sm text-secondary text-center">
-              {searchQuery ? 'Farklı bir arama deneyin' : 'N8N webhook\'undan veri gönderin'}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredConversations.map((conv) => (
-              <div
-                key={conv.id}
-                className={`group bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-all ${
-                  !conv.is_read 
-                    ? 'border-primary/30 bg-primary/5' 
-                    : 'border-gray-200 hover:border-gray-300'
+                key={ch}
+                onClick={() => setChannelFilter(ch)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all shadow-sm ${
+                  channelFilter === ch
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-gray-50 text-secondary hover:bg-gray-100 border border-gray-200'
                 }`}
               >
-                <Link href={`/chat/${conv.id}`} className="block">
-                  <div className="flex items-center gap-4">
-                    {/* Profile Photo */}
-                    <div className="relative flex-shrink-0">
-                      <div className="w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden">
-                        <img
-                          src={conv.customers.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.customers.name)}&background=2563EB&color=fff&size=256&bold=true`}
-                          alt={conv.customers.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      {!conv.is_read && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-white"></div>
-                      )}
-                    </div>
+                {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : ch === 'whatsapp' ? 'WhatsApp' : 'Web'}
+              </button>
+            ))}
+          </div>
+        </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h3 className="font-bold text-gray-900 truncate text-base">
-                          {conv.customers.name}
-                        </h3>
-                        {conv.last_message_at && (
-                          <span className="text-xs text-secondary flex-shrink-0 font-medium">
-                            {formatTime(conv.last_message_at)}
-                          </span>
+        {/* Conversations List - Modern Cards */}
+        <div className="px-6 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-secondary">Yükleniyor...</div>
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center h-64 px-4">
+              <div className="w-20 h-20 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mb-4 shadow-sm">
+                <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="text-gray-700 font-semibold text-lg text-center mb-1">Veriler yüklenemedi</div>
+              <div className="text-sm text-red-600 text-center mb-4">{fetchError}</div>
+              <button
+                type="button"
+                onClick={() => fetchConversations(true)}
+                className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90 shadow-md"
+              >
+                Tekrar dene
+              </button>
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 px-4">
+              <div className="w-20 h-20 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4 shadow-sm">
+                <svg className="w-10 h-10 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <div className="text-gray-700 font-semibold text-lg text-center mb-1">
+                {searchQuery ? 'Arama sonucu bulunamadı' : 'Henüz konuşma yok'}
+              </div>
+              <div className="text-sm text-secondary text-center">
+                {searchQuery ? 'Farklı bir arama deneyin' : 'N8N webhook\'undan veri gönderin'}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredConversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`group bg-white border rounded-2xl p-4 shadow-md hover:shadow-xl transition-all ${
+                    !conv.is_read 
+                      ? 'border-primary/30 bg-gradient-to-br from-primary/5 to-white ring-2 ring-primary/10' 
+                      : 'border-gray-200 hover:border-primary/30'
+                  }`}
+                >
+                  <Link href={`/chat/${conv.id}`} className="block">
+                    <div className="flex items-center gap-4">
+                      {/* Profile Photo */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 border-2 border-gray-200 overflow-hidden shadow-sm">
+                          <img
+                            src={conv.customers.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.customers.name)}&background=1a365d&color=fff&size=256&bold=true`}
+                            alt={conv.customers.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {!conv.is_read && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full border-2 border-white shadow-md"></div>
                         )}
                       </div>
-                      <p className="text-sm text-secondary truncate leading-relaxed mb-2">
-                        {conv.last_message || 'Henüz mesaj yok'}
-                      </p>
-                      {conv.channel && (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
-                            conv.channel === 'email' 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : conv.channel === 'whatsapp'
-                              ? 'bg-green-100 text-green-700'
-                              : conv.channel === 'web'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-gray-100 text-secondary'
-                          }`}>
-                            {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'email' ? 'Email' : conv.channel === 'web' ? 'Web' : conv.channel}
-                          </span>
-                          {!conv.is_read && (
-                            <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-lg font-semibold">
-                              Yeni
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <h3 className="font-bold text-gray-900 truncate text-base">
+                            {conv.customers.name}
+                          </h3>
+                          {conv.last_message_at && (
+                            <span className="text-xs text-secondary flex-shrink-0 font-medium">
+                              {formatTime(conv.last_message_at)}
                             </span>
                           )}
                         </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={(e) => handleDeleteConversation(conv.id, e)}
-                        disabled={deletingId === conv.id}
-                        className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors disabled:opacity-50"
-                        title="Konuşmayı Sil"
-                      >
-                        {deletingId === conv.id ? (
-                          <div className="w-5 h-5 border-2 border-danger border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                        <p className="text-sm text-secondary truncate leading-relaxed mb-2.5">
+                          {conv.last_message || 'Henüz mesaj yok'}
+                        </p>
+                        {conv.channel && (
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold shadow-sm ${
+                              conv.channel === 'email' 
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                                : conv.channel === 'whatsapp'
+                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                : conv.channel === 'web'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-gray-50 text-secondary border border-gray-200'
+                            }`}>
+                              {conv.channel === 'whatsapp' ? 'WhatsApp' : conv.channel === 'email' ? 'Email' : conv.channel === 'web' ? 'Web' : conv.channel}
+                            </span>
+                            {!conv.is_read && (
+                              <span className="text-xs px-2.5 py-1 bg-primary text-white rounded-lg font-bold shadow-sm">
+                                Yeni
+                              </span>
+                            )}
+                          </div>
                         )}
-                      </button>
-                      <div className="text-gray-300 group-hover:text-primary transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={(e) => handleDeleteConversation(conv.id, e)}
+                          disabled={deletingId === conv.id}
+                          className="p-2 text-danger hover:bg-danger/10 rounded-xl transition-colors disabled:opacity-50"
+                          title="Konuşmayı Sil"
+                        >
+                          {deletingId === conv.id ? (
+                            <div className="w-5 h-5 border-2 border-danger border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                        <div className="text-gray-300 group-hover:text-primary transition-colors">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Navigation */}
