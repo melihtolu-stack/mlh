@@ -64,42 +64,53 @@ client.on('disconnected', (reason) => {
   clientReady = false;
 });
 
-// Incoming message handler
 client.on('message', async (message) => {
-  console.log(`📩 Message received from ${message.from}: ${message.body}`);
-  
   try {
-    // Get contact info
+    // ❌ grup mesajlarını alma (CRM için genelde istenmez)
+    if (message.isGroupMsg) return;
+
+    // ❌ boş mesaj / medya placeholder koruması
+    if (!message.body || message.body.trim() === '') return;
+
     const contact = await message.getContact();
-    
-    // Prepare webhook payload
+
+    // 📞 telefon numarasını normalize et
+    const fromPhoneRaw = message.from.replace('@c.us', '');
+    const fromPhone = fromPhoneRaw.replace(/[^0-9]/g, '');
+
+    // ✅ BACKEND İLE %100 UYUMLU PAYLOAD
     const payload = {
-      from: message.from,
-      to: message.to,
-      body: message.body,
-      timestamp: message.timestamp,
-      type: message.type,
-      isGroup: message.isGroup,
-      contact: {
-        name: contact.pushname || contact.name || 'Unknown',
-        number: contact.number
-      },
-      messageId: message.id._serialized
+      channel: "whatsapp",
+      from_phone: fromPhone,
+      from_name: contact.pushname || contact.name || null,
+      content: message.body,
+      message_id: message.id._serialized,
+      timestamp: message.timestamp
     };
 
-    // Send to backend webhook
+    console.log('📩 WhatsApp → Backend payload:', payload);
+
     const response = await axios.post(WEBHOOK_URL, payload, {
       headers: {
         'Content-Type': 'application/json'
       },
       timeout: 10000
     });
-    
-    console.log(`✅ Webhook sent successfully, status: ${response.status}`);
+
+    console.log(`✅ Webhook delivered (${response.status})`);
   } catch (error) {
-    console.error('❌ Failed to send webhook:', error.message);
+    if (error.response) {
+      console.error(
+        '❌ Webhook error:',
+        error.response.status,
+        error.response.data
+      );
+    } else {
+      console.error('❌ Webhook failed:', error.message);
+    }
   }
 });
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
