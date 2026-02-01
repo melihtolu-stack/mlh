@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Install Chrome dependencies for whatsapp-web.js (Puppeteer)
+# Install Chrome dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
     chromium-sandbox \
@@ -28,31 +28,23 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Puppeteer to use installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Create app directory
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install --omit=dev
 
-# Copy application files
 COPY . .
 
-# ⭐ DEĞİŞİKLİK: data klasörünü oluştur ve izinleri ayarla
-RUN mkdir -p /app/data && chmod 777 /app/data
+RUN mkdir -p /app/data/chromium-profile && \
+    chmod -R 777 /app/data
 
-# Expose port
 EXPOSE 3001
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
-# Start the application
-CMD ["node", "index.js"]
+# ⭐ KRİTİK DEĞİŞİKLİK - Başlamadan önce lock dosyalarını temizle
+CMD sh -c "rm -rf /app/data/chromium-profile/SingletonLock /app/data/chromium-profile/SingletonSocket /app/data/chromium-profile/SingletonCookie 2>/dev/null; node index.js"
