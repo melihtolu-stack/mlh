@@ -3,6 +3,8 @@ const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const express = require('express');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -14,6 +16,41 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL || `${BACKEND_URL}/api/messages/inco
 
 let clientReady = false;
 let qrCode = null;
+
+// ⭐ Chromium lock dosyalarını temizle
+const cleanupChromiumLocks = () => {
+  const lockFiles = [
+    './data/chromium-profile/SingletonLock',
+    './data/chromium-profile/SingletonSocket',
+    './data/chromium-profile/SingletonCookie'
+  ];
+  
+  lockFiles.forEach(file => {
+    try {
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+        console.log(`🧹 Cleaned up: ${file}`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Could not clean ${file}:`, err.message);
+    }
+  });
+};
+
+// ⭐ Data klasörlerini oluştur
+const ensureDataDirectories = () => {
+  const dirs = ['./data', './data/chromium-profile'];
+  dirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`📁 Created directory: ${dir}`);
+    }
+  });
+};
+
+// Başlangıçta temizlik yap
+ensureDataDirectories();
+cleanupChromiumLocks();
 
 // Initialize WhatsApp client
 const client = new Client({
@@ -29,17 +66,21 @@ const client = new Client({
       '--disable-accelerated-2d-canvas',
       '--no-first-run',
       '--no-zygote',
-      '--disable-gpu'
-    ]
+      '--disable-gpu',
+      '--single-process',
+      '--no-default-browser-check',
+      '--disable-background-networking',
+    ],
+    userDataDir: './data/chromium-profile'
   },
-  authTimeoutMs: 120000, // 2 dakika QR okutma süresi
+  authTimeoutMs: 120000,
   qrMaxRetries: 5,
   restartOnAuthFail: true,
   takeoverOnConflict: true,
   takeoverTimeoutMs: 60000
 });
 
-// QR Code event - display in terminal
+// QR Code event
 client.on('qr', (qr) => {
   qrCode = qr;
   const timestamp = new Date().toLocaleString('tr-TR');
@@ -65,30 +106,30 @@ client.on('authenticated', () => {
 client.on('auth_failure', (msg) => {
   console.error('❌ Authentication failed:', msg);
   clientReady = false;
+  // Temizlik yap ve yeniden başlat
+  setTimeout(() => {
+    cleanupChromiumLocks();
+  }, 2000);
 });
 
 // Disconnected event
 client.on('disconnected', (reason) => {
   console.log('📴 WhatsApp disconnected:', reason);
   clientReady = false;
+  // Temizlik yap
+  cleanupChromiumLocks();
 });
 
 // Incoming message handler
 client.on('message', async (message) => {
   try {
-    // Skip group messages
     if (message.isGroupMsg) return;
-
-    // Skip empty messages
     if (!message.body || message.body.trim() === '') return;
 
     const contact = await message.getContact();
-
-    // Normalize phone number
     const fromPhoneRaw = message.from.replace('@c.us', '');
     const fromPhone = fromPhoneRaw.replace(/[^0-9]/g, '');
 
-    // Prepare payload for backend
     const payload = {
       channel: "whatsapp",
       from_phone: fromPhone,
@@ -101,20 +142,14 @@ client.on('message', async (message) => {
     console.log('📩 WhatsApp → Backend payload:', payload);
 
     const response = await axios.post(WEBHOOK_URL, payload, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       timeout: 10000
     });
 
     console.log(`✅ Webhook delivered (${response.status})`);
   } catch (error) {
     if (error.response) {
-      console.error(
-        '❌ Webhook error:',
-        error.response.status,
-        error.response.data
-      );
+      console.error('❌ Webhook error:', error.response.status, error.response.data);
     } else {
       console.error('❌ Webhook failed:', error.message);
     }
@@ -125,15 +160,12 @@ client.on('message', async (message) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    whatsapp: {
-      ready: clientReady,
-      hasQR: !!qrCode
-    },
+    whatsapp: { ready: clientReady, hasQR: !!qrCode },
     timestamp: new Date().toISOString()
   });
 });
 
-// Get QR code endpoint (JSON)
+// QR code endpoint (JSON)
 app.get('/qr', (req, res) => {
   if (clientReady) {
     return res.json({
@@ -158,7 +190,7 @@ app.get('/qr', (req, res) => {
   });
 });
 
-// QR code display endpoint (HTML)
+// QR display endpoint (HTML)
 app.get('/qr-display', async (req, res) => {
   if (clientReady) {
     return res.send(`
@@ -187,47 +219,26 @@ app.get('/qr-display', async (req, res) => {
             <img src="${url}" style="width: 400px; height: 400px; border: 2px solid #ccc; border-radius: 10px;"/>
             <p><strong style="color: #ff6b6b;">⏰ Expires in: 2 minutes</strong></p>
             <p style="color: #666;">Open WhatsApp → Settings → Linked Devices → Link a Device</p>
-            <p style="color: #999; font-size: 12px;">Last updated: ${new Date().toLocaleString('tr-TR')}</p>
           </body>
         </html>
       `);
     } catch (error) {
-      return res.status(500).send(`
-        <html>
-          <body style="font-family: Arial; text-align: center; padding: 50px;">
-            <h1 style="color: red;">❌ Error generating QR code</h1>
-            <p>${error.message}</p>
-          </body>
-        </html>
-      `);
+      return res.status(500).send('Error generating QR code');
     }
   }
   
   res.send(`
     <html>
-      <head>
-        <meta http-equiv="refresh" content="3">
-        <title>WhatsApp - Initializing</title>
-      </head>
+      <head><meta http-equiv="refresh" content="3"></head>
       <body style="font-family: Arial; text-align: center; padding: 50px;">
         <h1>⏳ Initializing WhatsApp Client...</h1>
-        <p>QR code will appear here shortly. This page refreshes every 3 seconds.</p>
-        <div style="margin-top: 30px;">
-          <div class="spinner" style="border: 4px solid #f3f3f3; border-top: 4px solid #25D366; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-        </div>
-        <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        </style>
-        <p style="color: #999; font-size: 12px; margin-top: 20px;">Last checked: ${new Date().toLocaleString('tr-TR')}</p>
+        <p>QR code will appear shortly...</p>
       </body>
     </html>
   `);
 });
 
-// Get connection status
+// Status endpoint
 app.get('/status', (req, res) => {
   res.json({
     connected: clientReady,
@@ -242,32 +253,17 @@ app.post('/send', async (req, res) => {
     const { to, message, type = 'text' } = req.body;
 
     if (!to || !message) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: to, message'
-      });
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     if (!clientReady) {
-      return res.status(503).json({
-        success: false,
-        error: 'WhatsApp client is not ready'
-      });
+      return res.status(503).json({ success: false, error: 'WhatsApp client is not ready' });
     }
 
-    // Format phone number (add @c.us suffix if not present)
     const chatId = to.includes('@') ? to : `${to.replace(/[^0-9]/g, '')}@c.us`;
+    const result = await client.sendMessage(chatId, message);
 
-    let result;
-    
-    if (type === 'text') {
-      result = await client.sendMessage(chatId, message);
-    } else {
-      // Support for other message types can be added here
-      result = await client.sendMessage(chatId, message);
-    }
-
-    console.log(`📤 Message sent to ${chatId}: ${message.substring(0, 50)}...`);
+    console.log(`📤 Message sent to ${chatId}`);
 
     res.json({
       success: true,
@@ -276,43 +272,27 @@ app.post('/send', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Failed to send message:', error.message);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Start Express server
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 WhatsApp service running on port ${PORT}`);
   console.log(`📡 Webhook URL: ${WEBHOOK_URL}`);
 });
 
-// Initialize WhatsApp client
+// Initialize client
 console.log('🔄 Initializing WhatsApp client...');
 client.initialize();
 
-// Session status monitoring (her dakika)
-setInterval(() => {
-  if (clientReady) {
-    console.log('📊 WhatsApp Status: CONNECTED ✅');
-  } else if (qrCode) {
-    console.log('📊 WhatsApp Status: WAITING FOR QR SCAN ⏳');
-  } else {
-    console.log('📊 WhatsApp Status: INITIALIZING 🔄');
-  }
-}, 60000);
-
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down...');
+const shutdown = async (signal) => {
+  console.log(`\n🛑 Received ${signal}, shutting down...`);
+  cleanupChromiumLocks();
   await client.destroy();
   process.exit(0);
-});
+};
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down...');
-  await client.destroy();
-  process.exit(0);
-});
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
