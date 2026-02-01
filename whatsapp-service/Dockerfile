@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     libu2f-udev \
     libvulkan1 \
+    curl \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
@@ -43,8 +44,8 @@ RUN npm install --omit=dev
 # Copy application files
 COPY . .
 
-# Create directory for WhatsApp session data
-RUN mkdir -p /app/whatsapp-session
+# ⭐ DEĞİŞİKLİK: data klasörünü oluştur ve izinleri ayarla
+RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Expose port
 EXPOSE 3001

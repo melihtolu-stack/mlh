@@ -15,6 +15,7 @@ let clientReady = false;
 let qrCode = null;
 
 // Initialize WhatsApp client
+// Mevcut client tanımını değiştirin:
 const client = new Client({
   authStrategy: new LocalAuth({
     dataPath: './data'
@@ -30,38 +31,85 @@ const client = new Client({
       '--no-zygote',
       '--disable-gpu'
     ]
+  },
+  // ⭐ EKLENECEK SATIRLAR:
+  authTimeoutMs: 120000, // 2 dakikaya çıkar (QR okutma için)
+  qrMaxRetries: 5,        // 5 kez QR generate etsin
+  restartOnAuthFail: true, // Auth fail olursa restart
+  takeoverOnConflict: true, // Çakışmalarda devral
+  takeoverTimeoutMs: 60000
+});
+
+// Get QR code endpoint - İYİLEŞTİRİLMİŞ VERSİYON
+app.get('/qr', (req, res) => {
+  if (clientReady) {
+    return res.json({
+      status: 'connected',
+      message: 'WhatsApp is already connected',
+      authenticated: true
+    });
   }
+  
+  if (qrCode) {
+    // QR'ı hem text hem de data URL olarak döndür
+    return res.json({
+      status: 'pending',
+      qr: qrCode,
+      message: 'Please scan this QR code with WhatsApp within 2 minutes',
+      expiresIn: '120 seconds'
+    });
+  }
+  
+  res.json({
+    status: 'initializing',
+    message: 'QR code not yet available, please wait and refresh...'
+  });
 });
 
-// QR Code event - display in terminal
-client.on('qr', (qr) => {
-  qrCode = qr;
-  console.log('\n📱 Scan this QR code with WhatsApp:\n');
-  qrcode.generate(qr, { small: true });
-});
-
-// Ready event
-client.on('ready', () => {
-  clientReady = true;
-  qrCode = null;
-  console.log('✅ WhatsApp client is ready!');
-});
-
-// Authentication success
-client.on('authenticated', () => {
-  console.log('🔐 WhatsApp authenticated successfully');
-});
-
-// Authentication failure
-client.on('auth_failure', (msg) => {
-  console.error('❌ Authentication failed:', msg);
-  clientReady = false;
-});
-
-// Disconnected event
-client.on('disconnected', (reason) => {
-  console.log('📴 WhatsApp disconnected:', reason);
-  clientReady = false;
+// ⭐ YENİ ENDPOINT: QR Kodu HTML olarak göster (tarayıcıdan direkt bakabilmek için)
+app.get('/qr-display', (req, res) => {
+  if (clientReady) {
+    return res.send(`
+      <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+          <h1 style="color: green;">✅ WhatsApp Connected!</h1>
+          <p>WhatsApp client is ready and authenticated.</p>
+        </body>
+      </html>
+    `);
+  }
+  
+  if (qrCode) {
+    const QRCode = require('qrcode');
+    QRCode.toDataURL(qrCode, (err, url) => {
+      res.send(`
+        <html>
+          <head>
+            <meta http-equiv="refresh" content="5">
+          </head>
+          <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>📱 Scan QR Code with WhatsApp</h1>
+            <p>This page will refresh every 5 seconds</p>
+            <img src="${url}" style="width: 400px; height: 400px;"/>
+            <p><strong>Expires in: 2 minutes</strong></p>
+            <p style="color: #666;">Open WhatsApp → Settings → Linked Devices → Link a Device</p>
+          </body>
+        </html>
+      `);
+    });
+  } else {
+    res.send(`
+      <html>
+        <head>
+          <meta http-equiv="refresh" content="3">
+        </head>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+          <h1>⏳ Initializing WhatsApp Client...</h1>
+          <p>QR code will appear here shortly. This page refreshes every 3 seconds.</p>
+        </body>
+      </html>
+    `);
+  }
 });
 
 client.on('message', async (message) => {
