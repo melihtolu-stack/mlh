@@ -92,7 +92,8 @@ const forceCleanupOnStartup = () => {
 // Initialize WhatsApp client
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: './data'
+    dataPath: './data',
+    clientId: 'mlh-crm-client' // Unique client ID
   }),
   puppeteer: {
     headless: true,
@@ -114,14 +115,14 @@ const client = new Client({
       '--disable-session-crashed-bubble',
       '--disable-infobars',
       '--disable-blink-features=AutomationControlled'
-    ]
-    // ⚠️ userDataDir kaldırıldı - LocalAuth zaten dataPath kullanıyor
+    ],
+    timeout: 60000 // 60 seconds for puppeteer launch
   },
-  authTimeoutMs: 120000,
-  qrMaxRetries: 5,
+  authTimeoutMs: 180000, // 3 minutes (increased from 2)
+  qrMaxRetries: 10, // More retries
   restartOnAuthFail: true,
   takeoverOnConflict: true,
-  takeoverTimeoutMs: 60000
+  takeoverTimeoutMs: 120000 // 2 minutes (increased from 1)
 });
 
 // Events
@@ -129,30 +130,54 @@ client.on('qr', (qr) => {
   qrCode = qr;
   const timestamp = new Date().toLocaleString('tr-TR');
   console.log(`\n📱 [${timestamp}] QR CODE GENERATED`);
-  console.log('⏰ Scan within 2 minutes\n');
+  console.log('⏰ Scan within 3 minutes\n');
   qrcode.generate(qr, { small: true });
+});
+
+client.on('loading_screen', (percent, message) => {
+  console.log(`⏳ Loading: ${percent}% - ${message}`);
+});
+
+client.on('change_state', (state) => {
+  console.log(`🔄 State changed to: ${state}`);
 });
 
 client.on('ready', () => {
   clientReady = true;
   qrCode = null;
-  console.log('✅ WhatsApp client is ready!');
+  const timestamp = new Date().toLocaleString('tr-TR');
+  console.log(`✅ WhatsApp client is ready! [${timestamp}]`);
+  console.log('🎉 You can now send and receive messages!');
 });
 
 client.on('authenticated', () => {
-  console.log('🔐 Authenticated successfully');
+  const timestamp = new Date().toLocaleString('tr-TR');
+  console.log(`🔐 Authenticated successfully [${timestamp}]`);
+  console.log('⏳ Waiting for WhatsApp to connect...');
 });
 
 client.on('auth_failure', (msg) => {
-  console.error('❌ Auth failed:', msg);
+  const timestamp = new Date().toLocaleString('tr-TR');
+  console.error(`❌ Auth failed [${timestamp}]:`, msg);
+  console.error('🔄 Will retry with cleanup...');
   clientReady = false;
-  setTimeout(cleanupChromium, 2000);
+  setTimeout(() => {
+    cleanupChromium();
+    console.log('💡 Please scan QR code again when it appears');
+  }, 2000);
 });
 
 client.on('disconnected', (reason) => {
-  console.log('📴 Disconnected:', reason);
+  const timestamp = new Date().toLocaleString('tr-TR');
+  console.log(`📴 Disconnected [${timestamp}]:`, reason);
+  console.log('🔄 Client will attempt to reconnect...');
   clientReady = false;
-  cleanupChromium();
+  
+  // Only cleanup if it's a critical disconnection
+  if (reason === 'NAVIGATION' || reason === 'CONFLICT') {
+    console.log('🧹 Running cleanup due to critical disconnect...');
+    cleanupChromium();
+  }
 });
 
 // Message handler
