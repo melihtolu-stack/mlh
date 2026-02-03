@@ -25,40 +25,69 @@ const cleanupChromium = () => {
   try {
     // Eski Chromium process'lerini öldür
     execSync('pkill -9 chromium || true', { stdio: 'ignore' });
+    execSync('pkill -9 chrome || true', { stdio: 'ignore' });
+    console.log('  ✓ Killed existing Chromium processes');
   } catch (e) {
     // Ignore errors
   }
   
-  // Lock dosyalarını temizle
-  const lockPaths = [
-    './data/chromium-profile/SingletonLock',
-    './data/chromium-profile/SingletonSocket',
-    './data/chromium-profile/SingletonCookie',
-    './data/chromium-profile/lockfile'
-  ];
-  
-  lockPaths.forEach(path => {
+  // Tüm lock dosyalarını bul ve temizle (recursive)
+  const findAndRemoveLocks = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    
     try {
-      if (fs.existsSync(path)) {
-        fs.unlinkSync(path);
-        console.log(`  ✓ Removed: ${path}`);
-      }
+      const items = fs.readdirSync(dir, { withFileTypes: true });
+      
+      items.forEach(item => {
+        const fullPath = `${dir}/${item.name}`;
+        
+        if (item.isDirectory()) {
+          findAndRemoveLocks(fullPath);
+        } else if (
+          item.name === 'SingletonLock' ||
+          item.name === 'SingletonSocket' ||
+          item.name === 'SingletonCookie' ||
+          item.name === 'lockfile' ||
+          item.name.includes('lock')
+        ) {
+          try {
+            fs.unlinkSync(fullPath);
+            console.log(`  ✓ Removed: ${fullPath}`);
+          } catch (err) {
+            console.warn(`  ⚠ Could not remove ${fullPath}:`, err.message);
+          }
+        }
+      });
     } catch (err) {
-      console.warn(`  ⚠ Could not remove ${path}`);
+      console.warn(`  ⚠ Error scanning ${dir}:`, err.message);
     }
-  });
+  };
   
   // Data klasörünü oluştur
-  if (!fs.existsSync('./data/chromium-profile')) {
-    fs.mkdirSync('./data/chromium-profile', { recursive: true });
-    console.log('  ✓ Created chromium-profile directory');
+  if (!fs.existsSync('./data')) {
+    fs.mkdirSync('./data', { recursive: true });
+    console.log('  ✓ Created data directory');
   }
   
-  console.log('🧹 Cleanup completed!');
+  // Tüm lock dosyalarını temizle
+  findAndRemoveLocks('./data');
+  
+  console.log('✅ Cleanup completed!');
 };
 
-// Başlangıçta temizlik
-cleanupChromium();
+// Force cleanup on startup (with delay)
+const forceCleanupOnStartup = () => {
+  console.log('🔄 Starting force cleanup...');
+  cleanupChromium();
+  
+  // Wait a bit before initializing client
+  return new Promise(resolve => {
+    setTimeout(() => {
+      console.log('✅ Ready to initialize client');
+      resolve();
+    }, 2000);
+  });
+};
 
 // Initialize WhatsApp client
 const client = new Client({
@@ -81,9 +110,12 @@ const client = new Client({
       '--disable-default-apps',
       '--disable-extensions',
       '--disable-translate',
-      '--disable-sync'
-    ],
-    userDataDir: './data/chromium-profile'
+      '--disable-sync',
+      '--disable-session-crashed-bubble',
+      '--disable-infobars',
+      '--disable-blink-features=AutomationControlled'
+    ]
+    // ⚠️ userDataDir kaldırıldı - LocalAuth zaten dataPath kullanıyor
   },
   authTimeoutMs: 120000,
   qrMaxRetries: 5,
@@ -213,21 +245,92 @@ app.post('/send', async (req, res) => {
   }
 });
 
+// Start Express server
 app.listen(PORT, () => {
   console.log(`🚀 Service running on port ${PORT}`);
   console.log(`📡 Webhook: ${WEBHOOK_URL}`);
 });
 
-console.log('🔄 Initializing WhatsApp client...');
-client.initialize();
+// Initialize WhatsApp client with cleanup
+(async () => {
+  try {
+    console.log('🔄 Starting initialization sequence...');
+    
+    // Force cleanup before starting
+    await forceCleanupOnStartup();
+    
+    console.log('🔄 Initializing WhatsApp client...');
+    await client.initialize();
+    
+    console.log('✅ WhatsApp client initialization started successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize WhatsApp client:', error);
+    console.error('🔄 Attempting recovery...');
+    
+    // Try cleanup and restart
+    await forceCleanupOnStartup();
+    
+    try {
+      await client.initialize();
+      console.log('✅ WhatsApp client recovered and initialized');
+    } catch (retryError) {
+      console.error('❌ Recovery failed:', retryError);
+      console.error('🛑 Service will continue running, but WhatsApp client is not available');
+      console.error('💡 Try restarting the container');
+    }
+  }
+})();
 
-// Shutdown
-const shutdown = async () => {
-  console.log('\n🛑 Shutting down...');
-  cleanupChromium();
-  await client.destroy();
+// Graceful shutdown
+let isShuttingDown = false;
+
+const shutdown = async (signal) => {
+  if (isShuttingDown) {
+    console.log('⚠️ Already shutting down...');
+    return;
+  }
+  
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
+  
+  try {
+    // Close WhatsApp client
+    if (client) {
+      console.log('📴 Closing WhatsApp client...');
+      await Promise.race([
+        client.destroy(),
+        new Promise(resolve => setTimeout(resolve, 5000)) // 5s timeout
+      ]);
+      console.log('✅ WhatsApp client closed');
+    }
+  } catch (error) {
+    console.error('⚠️ Error closing WhatsApp client:', error.message);
+  }
+  
+  try {
+    // Cleanup Chromium
+    console.log('🧹 Final cleanup...');
+    cleanupChromium();
+    console.log('✅ Cleanup completed');
+  } catch (error) {
+    console.error('⚠️ Error during cleanup:', error.message);
+  }
+  
+  console.log('👋 Goodbye!');
   process.exit(0);
 };
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGQUIT', () => shutdown('SIGQUIT'));
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  shutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit on unhandled rejection, just log it
+});
