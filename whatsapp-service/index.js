@@ -13,6 +13,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const WEBHOOK_URL = process.env.WEBHOOK_URL || `${BACKEND_URL}/api/whatsapp/incoming`;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || '';
 
 let clientReady = false;
 let qrCode = null;
@@ -140,8 +141,15 @@ client.on('message', async (message) => {
     };
 
     console.log('📩 Message →', fromPhone);
+    
+    // Prepare headers
+    const headers = { 'Content-Type': 'application/json' };
+    if (WEBHOOK_TOKEN) {
+      headers['Authorization'] = `Bearer ${WEBHOOK_TOKEN}`;
+    }
+    
     const response = await axios.post(WEBHOOK_URL, payload, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       timeout: 10000
     });
     console.log(`✅ Delivered (${response.status})`);
