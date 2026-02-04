@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Sidebar from './sidebar/Sidebar'
-import BottomNav from './bottom-nav/BottomNav'
+import BottomNav from './BottomNav'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
