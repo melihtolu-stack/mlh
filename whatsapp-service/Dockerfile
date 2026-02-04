@@ -12,6 +12,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Configure git to use HTTPS instead of SSH (for npm dependencies)
+RUN git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
+    git config --global url."https://".insteadOf ssh://
+
 # Install dependencies
 RUN npm install --omit=dev
 
