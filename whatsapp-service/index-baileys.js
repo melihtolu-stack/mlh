@@ -20,17 +20,9 @@ let qrCodeData = null;
 let isConnected = false;
 let connectionState = 'disconnected';
 
-// Pino logger with minimal output
+// Pino logger - simple JSON output for production
 const logger = pino({ 
-  level: process.env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      ignore: 'pid,hostname',
-      translateTime: 'HH:MM:ss'
-    }
-  }
+  level: process.env.LOG_LEVEL || 'error' // Only log errors by default
 });
 
 // Connect to WhatsApp
