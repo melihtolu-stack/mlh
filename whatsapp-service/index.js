@@ -90,13 +90,14 @@ const forceCleanupOnStartup = () => {
 };
 
 // Initialize WhatsApp client
+// Using NoAuth for now to test if the issue is with LocalAuth
+const { NoAuth } = require('whatsapp-web.js');
+
 const client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: './data',
-    clientId: 'mlh-crm-client' // Unique client ID
-  }),
+  authStrategy: new NoAuth(),
   puppeteer: {
     headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -114,15 +115,17 @@ const client = new Client({
       '--disable-sync',
       '--disable-session-crashed-bubble',
       '--disable-infobars',
-      '--disable-blink-features=AutomationControlled'
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process'
     ],
-    timeout: 60000 // 60 seconds for puppeteer launch
+    timeout: 60000
   },
-  authTimeoutMs: 180000, // 3 minutes (increased from 2)
-  qrMaxRetries: 10, // More retries
-  restartOnAuthFail: true,
+  authTimeoutMs: 180000,
+  qrMaxRetries: 10,
+  restartOnAuthFail: false, // Don't auto-restart on auth fail
   takeoverOnConflict: true,
-  takeoverTimeoutMs: 120000 // 2 minutes (increased from 1)
+  takeoverTimeoutMs: 120000,
+  qrTimeoutMs: 180000 // 3 minutes for QR
 });
 
 // Events
