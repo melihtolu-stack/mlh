@@ -286,7 +286,7 @@ export default function ChatPage() {
 
       {/* Messages - Panel Style with proper padding */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 pt-6 pb-4 sm:px-6 sm:pt-8 sm:pb-6">
+        <div className="max-w-4xl mx-auto px-4 pt-12 pb-4 sm:px-6 sm:pt-16 sm:pb-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-secondary">Mesajlar yükleniyor...</div>
