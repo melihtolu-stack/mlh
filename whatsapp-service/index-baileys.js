@@ -108,6 +108,8 @@ async function connectToWhatsApp() {
           if (!messageText.trim()) continue;
           
           // Extract sender info
+          // Use senderPn (real phone number) if available, otherwise use remoteJid (for older formats)
+          const phoneField = message.key.senderPn || message.key.remoteJid;
           const from = message.key.remoteJid;
           const isGroup = from.endsWith('@g.us');
           
@@ -115,28 +117,18 @@ async function connectToWhatsApp() {
           if (isGroup) continue;
           
           // Clean phone number (remove all WhatsApp suffixes)
-          const phoneNumber = from.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
+          const phoneNumber = phoneField.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
           
           // Get sender name (if available)
           const pushName = message.pushName || null;
           
           // DEBUG: Log incoming message details
           console.log('📱 INCOMING MESSAGE DEBUG:');
-          console.log('   Raw remoteJid:', from);
-          console.log('   Cleaned phone:', phoneNumber);
-          console.log('   Push name:', pushName);
-          console.log('   Message:', messageText.substring(0, 50));
-          console.log('\n🔍 FULL MESSAGE KEY:');
-          console.log(JSON.stringify(message.key, null, 2));
-          console.log('\n🔍 MESSAGE INFO:');
-          console.log('   Participant:', message.key.participant);
-          console.log('   Message ID:', message.key.id);
-          if (message.messageStubParameters) {
-            console.log('   Stub params:', message.messageStubParameters);
-          }
-          if (message.verifiedBizName) {
-            console.log('   Business name:', message.verifiedBizName);
-          }
+          console.log('   ❌ remoteJid (ID):', from);
+          console.log('   ✅ senderPn (Real):', message.key.senderPn);
+          console.log('   📞 Final phone:', phoneNumber);
+          console.log('   👤 Push name:', pushName);
+          console.log('   💬 Message:', messageText.substring(0, 50));
           
           // Prepare webhook payload
           const payload = {
