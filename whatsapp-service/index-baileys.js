@@ -120,6 +120,13 @@ async function connectToWhatsApp() {
           // Get sender name (if available)
           const pushName = message.pushName || null;
           
+          // DEBUG: Log incoming message details
+          console.log('📱 INCOMING MESSAGE DEBUG:');
+          console.log('   Raw remoteJid:', from);
+          console.log('   Cleaned phone:', phoneNumber);
+          console.log('   Push name:', pushName);
+          console.log('   Message:', messageText.substring(0, 50));
+          
           // Prepare webhook payload
           const payload = {
             channel: 'whatsapp',
