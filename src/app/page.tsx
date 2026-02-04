@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import BottomNav from "@/components/BottomNav"
 import { RefreshCw } from "lucide-react"
 
 interface Customer {
@@ -476,9 +475,6 @@ export default function HomePage() {
           )}
         </div>
       </div>
-
-      {/* Bottom Navigation */}
-      <BottomNav />
     </div>
   )
 }

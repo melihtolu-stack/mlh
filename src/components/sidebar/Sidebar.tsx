@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/AuthContext"
+import { LogOut, User } from "lucide-react"
 
 interface Customer {
   id: string
@@ -25,6 +27,7 @@ interface Conversation {
 export default function Sidebar() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const { user, signOut } = useAuth()
 
   useEffect(() => {
     fetchConversations()
@@ -152,6 +155,28 @@ export default function Sidebar() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* User Info & Logout */}
+      <div className="border-t border-gray-200 p-4 bg-white">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {user?.email}
+            </p>
+            <p className="text-xs text-secondary">Yönetici</p>
+          </div>
+        </div>
+        <button
+          onClick={() => signOut()}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-sm font-medium"
+        >
+          <LogOut size={18} />
+          <span>Çıkış Yap</span>
+        </button>
       </div>
     </aside>
   )
