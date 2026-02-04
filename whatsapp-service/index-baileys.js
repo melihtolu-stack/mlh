@@ -114,8 +114,8 @@ async function connectToWhatsApp() {
           // Skip group messages
           if (isGroup) continue;
           
-          // Clean phone number
-          const phoneNumber = from.replace('@s.whatsapp.net', '');
+          // Clean phone number (remove all WhatsApp suffixes)
+          const phoneNumber = from.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
           
           // Get sender name (if available)
           const pushName = message.pushName || null;
@@ -269,8 +269,10 @@ app.post('/send', async (req, res) => {
       });
     }
     
-    // Format number (add @s.whatsapp.net suffix)
-    const jid = to.includes('@') ? to : `${to.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+    // Format number: clean first, then add correct suffix
+    // Remove any existing WhatsApp suffixes and non-numeric chars (except +)
+    const cleanNumber = to.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '').replace(/[^0-9+]/g, '');
+    const jid = `${cleanNumber}@s.whatsapp.net`;
     
     // Send message
     const sent = await sock.sendMessage(jid, { text: message });
