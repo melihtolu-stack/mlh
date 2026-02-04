@@ -64,7 +64,12 @@ export default function ChatPage() {
         },
         (payload) => {
           const newMessage = payload.new as Message
-          setMessages((prev) => [...prev, newMessage])
+          // Prevent duplicate messages
+          setMessages((prev) => {
+            const exists = prev.some(msg => msg.id === newMessage.id)
+            if (exists) return prev
+            return [...prev, newMessage]
+          })
           scrollToBottom()
         }
       )
@@ -212,7 +217,7 @@ export default function ChatPage() {
   const customer = conversation.customers
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white pb-16 lg:pb-0">
       {/* Notification Toast */}
       {notification && (
         <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
