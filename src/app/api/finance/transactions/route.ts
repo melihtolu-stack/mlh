@@ -13,16 +13,21 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 })
     }
 
-    const mapped = (data || []).map((item) => ({
-      id: item.id,
-      amount: Number(item.amount),
-      type: item.type,
-      description: item.description,
-      person: item.person,
-      createdAt: item.created_at,
-      categoryId: item.category_id,
-      categoryName: item.finance_categories?.name || null,
-    }))
+    const mapped = (data || []).map((item) => {
+      const category =
+        Array.isArray(item.finance_categories) ? item.finance_categories[0] : item.finance_categories
+
+      return {
+        id: item.id,
+        amount: Number(item.amount),
+        type: item.type,
+        description: item.description,
+        person: item.person,
+        createdAt: item.created_at,
+        categoryId: item.category_id,
+        categoryName: category?.name || null,
+      }
+    })
 
     return NextResponse.json(mapped)
   } catch (err) {
@@ -60,6 +65,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to save transaction" }, { status: 500 })
     }
 
+    const category = Array.isArray(data.finance_categories) ? data.finance_categories[0] : data.finance_categories
+
     return NextResponse.json({
       id: data.id,
       amount: Number(data.amount),
@@ -68,7 +75,7 @@ export async function POST(request: Request) {
       person: data.person,
       createdAt: data.created_at,
       categoryId: data.category_id,
-      categoryName: data.finance_categories?.name || null,
+      categoryName: category?.name || null,
     })
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
