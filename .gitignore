@@ -18,6 +18,8 @@
 # misc
 .DS_Store
 *.pem
+__pycache__/
+*.pyc
 
 # debug
 npm-debug.log*
@@ -30,6 +32,9 @@ yarn-error.log*
 .env.local
 .env.production
 .env.development
+
+# whatsapp-web.js session data
+whatsapp-service/data/
 
 # vercel
 .vercel

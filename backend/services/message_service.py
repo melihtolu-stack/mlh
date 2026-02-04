@@ -93,6 +93,7 @@ class MessageService:
             Created message dictionary with email_sent flag
         """
         email_sent = False
+        send_blocked_reason = None
         try:
             # Insert message into database (always in Turkish)
             message_data = {
@@ -161,14 +162,16 @@ class MessageService:
                         
                         # Send email reply if this is an email conversation
                         if is_email_channel:
-                            # Determine target language for translation
-                            # If customer_language is Turkish, unknown, or None, send Turkish as-is
-                            if customer_language and customer_language != 'tr' and customer_language != 'unknown':
-                                target_language = customer_language
+                            # If customer language is unknown/empty, do not send
+                            if not customer_language or customer_language == 'unknown':
+                                send_blocked_reason = "Customer language is unknown. Reply not sent."
+                                logger.warning(f"Email reply blocked for {customer_email}: {send_blocked_reason}")
+                                target_language = None
                             else:
-                                target_language = 'tr'
+                                target_language = customer_language
                             
-                            logger.info(f"Translating agent message from Turkish to {target_language} for customer {customer_email}")
+                            if target_language:
+                                logger.info(f"Translating agent message from Turkish to {target_language} for customer {customer_email}")
                             
                             # Get last customer message for threading (optional)
                             last_customer_msg = None
@@ -188,28 +191,31 @@ class MessageService:
                             except Exception as e:
                                 logger.warning(f"Could not get last customer message for threading: {e}")
                             
-                            # Send translated email (or Turkish if target is Turkish)
-                            email_sent_result = email_service.send_translated_reply(
-                                to_email=customer_email,
-                                customer_name=customer_name,
-                                turkish_message=turkish_content,
-                                target_language=target_language,
-                                original_language='tr',
-                                original_subject=None,  # Can be enhanced to get from conversation metadata
-                                message_id=last_customer_msg.get('id') if last_customer_msg else None
-                            )
-                            
-                            email_sent = email_sent_result
-                            if email_sent:
-                                logger.info(f"Sent email reply to {customer_email} in language: {target_language}")
-                            else:
-                                logger.error(f"Failed to send email reply to {customer_email}")
+                            if target_language:
+                                # Send translated email
+                                email_sent_result = email_service.send_translated_reply(
+                                    to_email=customer_email,
+                                    customer_name=customer_name,
+                                    turkish_message=turkish_content,
+                                    target_language=target_language,
+                                    original_language='tr',
+                                    original_subject=None,  # Can be enhanced to get from conversation metadata
+                                    message_id=last_customer_msg.get('id') if last_customer_msg else None
+                                )
+                                
+                                email_sent = email_sent_result
+                                if email_sent:
+                                    logger.info(f"Sent email reply to {customer_email} in language: {target_language}")
+                                else:
+                                    logger.error(f"Failed to send email reply to {customer_email}")
                     except Exception as e:
                         logger.warning(f"Failed to send email reply: {e}")
             
             logger.info(f"Created agent message in Turkish")
             result = response.data[0].copy()
             result['email_sent'] = email_sent
+            if send_blocked_reason:
+                result['send_blocked_reason'] = send_blocked_reason
             return result
             
         except Exception as e:

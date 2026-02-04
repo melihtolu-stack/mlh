@@ -24,6 +24,7 @@ class MessageSendResponse(BaseModel):
     success: bool
     message_id: str
     email_sent: bool = False
+    blocked_reason: str | None = None
     error: str | None = None
 
 
@@ -113,31 +114,36 @@ async def send_message(request: MessageSendRequest):
             
             # Handle WhatsApp channel
             whatsapp_sent = False
+            blocked_reason = message.get('send_blocked_reason')
             if channel == 'whatsapp' and customer_phone:
                 try:
-                    # Translate message to customer's language
-                    translated_message = turkish_content
-                    if customer_language and customer_language != 'tr' and customer_language != 'unknown':
-                        translator = get_translation_service()
-                        translated_message = translator.translate_from_turkish(
-                            turkish_content,
-                            target_language=customer_language
-                        )
-                        if not translated_message:
-                            logger.warning(f"Translation failed, sending Turkish content as-is")
-                            translated_message = turkish_content
-                        else:
-                            logger.info(f"Translated message from Turkish to {customer_language}")
-                    
-                    # Send WhatsApp message
-                    whatsapp_service = get_whatsapp_service()
-                    result = await whatsapp_service.send_message(customer_phone, translated_message)
-                    
-                    if result.get('success'):
-                        whatsapp_sent = True
-                        logger.info(f"WhatsApp message successfully sent to {customer_phone}")
+                    if not customer_language or customer_language == 'unknown':
+                        blocked_reason = "Customer language is unknown. WhatsApp reply not sent."
+                        logger.warning(f"WhatsApp reply blocked for {customer_phone}: {blocked_reason}")
                     else:
-                        logger.error(f"Failed to send WhatsApp message: {result.get('error')}")
+                        # Translate message to customer's language
+                        translated_message = turkish_content
+                        if customer_language and customer_language != 'tr' and customer_language != 'unknown':
+                            translator = get_translation_service()
+                            translated_message = translator.translate_from_turkish(
+                                turkish_content,
+                                target_language=customer_language
+                            )
+                            if not translated_message:
+                                logger.warning(f"Translation failed, sending Turkish content as-is")
+                                translated_message = turkish_content
+                            else:
+                                logger.info(f"Translated message from Turkish to {customer_language}")
+                    
+                        # Send WhatsApp message
+                        whatsapp_service = get_whatsapp_service()
+                        result = await whatsapp_service.send_message(customer_phone, translated_message)
+                        
+                        if result.get('success'):
+                            whatsapp_sent = True
+                            logger.info(f"WhatsApp message successfully sent to {customer_phone}")
+                        else:
+                            logger.error(f"Failed to send WhatsApp message: {result.get('error')}")
                         
                 except Exception as e:
                     logger.error(f"Error sending WhatsApp message: {e}", exc_info=True)
@@ -145,7 +151,8 @@ async def send_message(request: MessageSendRequest):
             return MessageSendResponse(
                 success=True,
                 message_id=message.get('id'),
-                email_sent=email_sent or whatsapp_sent  # Return True if either email or WhatsApp sent
+                email_sent=email_sent or whatsapp_sent,  # Return True if either email or WhatsApp sent
+                blocked_reason=blocked_reason
             )
 
         except Exception as e:

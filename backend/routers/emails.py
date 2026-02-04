@@ -51,23 +51,22 @@ async def handle_incoming_email(request: EmailIncomingRequest):
         # Detect language (with safe fallback)
         detected_language = language_detector.detect_language(message_content)
         
-        # Safe fallback: if language detection returns null or unknown, default to Turkish
+        # Safe fallback: if language detection returns null or unknown, keep as unknown
         if not detected_language or detected_language == 'unknown':
-            detected_language = 'tr'
-            logger.warning(f"Language detection returned null/unknown, defaulting to Turkish")
+            detected_language = 'unknown'
+            logger.warning("Language detection returned null/unknown, keeping as unknown")
         
-        # Translate to Turkish if not already Turkish
+        # Translate to Turkish if not already Turkish (and language is known)
         translated_content = None
-        if detected_language and detected_language != 'tr':
+        if detected_language and detected_language not in ('tr', 'unknown'):
             translated_content = translator.translate_to_turkish(
                 message_content,
                 source_language=detected_language
             )
             # If translation fails, fallback to original content (assume it's Turkish)
             if not translated_content:
-                logger.warning(f"Translation failed, using original content as Turkish")
-                translated_content = message_content
-                detected_language = 'tr'
+                logger.warning("Translation failed, using original content for display")
+                translated_content = None
         
         # Use translated content for display (Turkish), or original if already Turkish
         display_content = translated_content if translated_content else message_content

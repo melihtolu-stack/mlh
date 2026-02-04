@@ -90,11 +90,11 @@ const forceCleanupOnStartup = () => {
 };
 
 // Initialize WhatsApp client
-// Using NoAuth for now to test if the issue is with LocalAuth
-const { NoAuth } = require('whatsapp-web.js');
+// Use LocalAuth to keep a stable session between restarts
+const { LocalAuth } = require('whatsapp-web.js');
 
 const client = new Client({
-  authStrategy: new NoAuth(),
+  authStrategy: new LocalAuth({ dataPath: './data' }),
   puppeteer: {
     headless: true,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',

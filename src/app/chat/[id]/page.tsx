@@ -12,6 +12,8 @@ interface Message {
   conversation_id: string
   sender: string
   content: string
+  original_content?: string | null
+  original_language?: string | null
   is_read: boolean
   sent_at: string
 }
@@ -158,8 +160,10 @@ export default function ChatPage() {
         scrollToBottom()
         fetchConversation()
         
-        // Show success notification
-        if (conversation?.channel === 'email') {
+        // Show notification
+        if (result.blocked_reason) {
+          setNotification({ type: 'error', message: result.blocked_reason })
+        } else if (conversation?.channel === 'email') {
           if (result.email_sent === true) {
             setNotification({ type: 'success', message: 'Mesaj gönderildi ve e-posta ile iletildi' })
           } else {
@@ -333,6 +337,11 @@ export default function ChatPage() {
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                    {msg.sender !== 'agent' && msg.original_content && msg.original_content !== msg.content && (
+                      <p className="text-xs text-secondary italic mt-2 whitespace-pre-wrap break-words">
+                        {msg.original_content}
+                      </p>
+                    )}
                     <span className={`text-xs mt-2 block ${msg.sender === 'agent' ? 'text-right opacity-90' : 'text-secondary'}`}>
                       {formatTime(msg.sent_at)}
                     </span>
