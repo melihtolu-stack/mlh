@@ -158,6 +158,8 @@ export default function ChatPage() {
           } else {
             setNotification({ type: 'error', message: 'Mesaj kaydedildi ancak e-posta gönderilemedi. Lütfen SMTP ayarlarını kontrol edin.' })
           }
+        } else if (conversation?.channel === 'whatsapp') {
+          setNotification({ type: 'success', message: 'WhatsApp mesajı iletildi' })
         } else {
           setNotification({ type: 'success', message: 'Mesaj gönderildi' })
         }
@@ -284,7 +286,7 @@ export default function ChatPage() {
 
       {/* Messages - Panel Style with proper padding */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:px-6 sm:py-6">
+        <div className="max-w-4xl mx-auto px-4 pt-6 pb-4 sm:px-6 sm:pt-8 sm:pb-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-secondary">Mesajlar yükleniyor...</div>
