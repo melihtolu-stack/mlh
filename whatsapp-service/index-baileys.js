@@ -126,6 +126,17 @@ async function connectToWhatsApp() {
           console.log('   Cleaned phone:', phoneNumber);
           console.log('   Push name:', pushName);
           console.log('   Message:', messageText.substring(0, 50));
+          console.log('\n🔍 FULL MESSAGE KEY:');
+          console.log(JSON.stringify(message.key, null, 2));
+          console.log('\n🔍 MESSAGE INFO:');
+          console.log('   Participant:', message.key.participant);
+          console.log('   Message ID:', message.key.id);
+          if (message.messageStubParameters) {
+            console.log('   Stub params:', message.messageStubParameters);
+          }
+          if (message.verifiedBizName) {
+            console.log('   Business name:', message.verifiedBizName);
+          }
           
           // Prepare webhook payload
           const payload = {
