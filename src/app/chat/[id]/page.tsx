@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import { ArrowLeft, Send } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { ArrowLeft, Send, Power } from "lucide-react"
 
 interface Message {
   id: string
@@ -34,6 +35,7 @@ interface Conversation {
 }
 
 export default function ChatPage() {
+  const { signOut } = useAuth()
   const router = useRouter()
   const params = useParams()
   const conversationId = params.id as string
@@ -282,6 +284,16 @@ export default function ChatPage() {
                 </p>
               </div>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="flex-shrink-0 p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+              title="Çıkış Yap"
+              aria-label="Logout"
+            >
+              <Power size={18} />
+            </button>
           </div>
         </div>
       </header>

@@ -3,7 +3,6 @@
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import Sidebar from './sidebar/Sidebar'
 import BottomNav from './BottomNav'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -39,14 +38,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     return <>{children}</>
   }
 
-  // Render with sidebar and bottom nav for authenticated users
+  // Render with bottom nav for authenticated users (no sidebar)
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:block">
-        <Sidebar />
-      </aside>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}

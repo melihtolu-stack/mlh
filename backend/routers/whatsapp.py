@@ -26,6 +26,26 @@ def extract_phone_number(phone_with_suffix: str) -> str:
     return phone_with_suffix
 
 
+def is_valid_phone_number(phone: str) -> bool:
+    """
+    Validate if phone number is a real phone number (not an ID)
+    Real phone numbers: 10-15 digits, starts with country code
+    Invalid: Very long (>15 chars) or contains letters
+    """
+    # Remove common prefixes
+    clean_phone = phone.replace('+', '').strip()
+    
+    # Check if it's all digits
+    if not clean_phone.isdigit():
+        return False
+    
+    # Check length (valid phone: 10-15 digits)
+    if len(clean_phone) < 10 or len(clean_phone) > 15:
+        return False
+    
+    return True
+
+
 @router.post("/incoming", response_model=WhatsAppIncomingResponse)
 async def handle_incoming_whatsapp(request: WhatsAppIncomingRequest):
     """
@@ -41,6 +61,16 @@ async def handle_incoming_whatsapp(request: WhatsAppIncomingRequest):
         
         # Extract phone number and customer info
         phone_number = extract_phone_number(request.from_phone)
+        
+        # Validate phone number (skip if it's an ID, not a real phone)
+        if not is_valid_phone_number(phone_number):
+            logger.warning(f"Invalid phone number (likely an ID): {phone_number} - Skipping message")
+            return WhatsAppIncomingResponse(
+                success=True,
+                message_id=request.message_id,
+                error=f"Invalid phone number format: {phone_number}"
+            )
+        
         customer_name = request.from_name
         
         # Try to get name from contact info if not in from_name

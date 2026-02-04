@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import { RefreshCw } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import { RefreshCw, Power } from "lucide-react"
 
 interface Customer {
   id: string
@@ -24,6 +25,7 @@ interface Conversation {
 }
 
 export default function HomePage() {
+  const { signOut } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -258,19 +260,30 @@ export default function HomePage() {
                 <p className="text-xs text-secondary">Bilgi Yönetim Sistemi</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => fetchConversations(true)}
-              disabled={refreshing}
-              className="p-2.5 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Listeyi yenile"
-              aria-label="Refresh"
-            >
-              <RefreshCw 
-                className={`${refreshing ? 'animate-spin' : ''}`}
-                size={20}
-              />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchConversations(true)}
+                disabled={refreshing}
+                className="p-2.5 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Listeyi yenile"
+                aria-label="Refresh"
+              >
+                <RefreshCw 
+                  className={`${refreshing ? 'animate-spin' : ''}`}
+                  size={20}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                title="Çıkış Yap"
+                aria-label="Logout"
+              >
+                <Power size={20} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
