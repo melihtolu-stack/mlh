@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import BottomNav from "@/components/BottomNav"
 
 type TransactionType = "in" | "out"
@@ -81,36 +81,33 @@ const PieChart = ({
 }
 
 export default function FinancePage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "t1",
-      amount: 120000,
-      type: "in",
-      description: "Proje geliri",
-      person: "Ayşe",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "t2",
-      amount: 18000,
-      type: "out",
-      description: "Kira ödemesi",
-      person: "Mehmet",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "t3",
-      amount: 12000,
-      type: "out",
-      description: "Yakıt gideri",
-      person: "Zeynep",
-      createdAt: new Date().toISOString(),
-    },
-  ])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [amount, setAmount] = useState("")
   const [type, setType] = useState<TransactionType>("out")
   const [description, setDescription] = useState("")
   const [person, setPerson] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch("/api/finance/transactions")
+        if (!response.ok) {
+          throw new Error("Finans verileri yüklenemedi")
+        }
+        const data = await response.json()
+        setTransactions(data)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Finans verileri yüklenemedi")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTransactions()
+  }, [])
 
   const totals = useMemo(() => {
     const income = transactions.filter((t) => t.type === "in").reduce((sum, t) => sum + t.amount, 0)
@@ -154,28 +151,40 @@ export default function FinancePage() {
     { label: "Gider", value: totals.expense, color: "#ef4444" },
   ]
 
-  const addTransaction = () => {
+  const addTransaction = async () => {
     const parsedAmount = Number(amount.replace(",", "."))
     if (!parsedAmount || parsedAmount <= 0 || !description.trim() || !person.trim()) return
 
-    const newTransaction: Transaction = {
-      id: `${Date.now()}`,
-      amount: parsedAmount,
-      type,
-      description: description.trim(),
-      person: person.trim(),
-      createdAt: new Date().toISOString(),
-    }
+    try {
+      const response = await fetch("/api/finance/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: parsedAmount,
+          type,
+          description: description.trim(),
+          person: person.trim(),
+        }),
+      })
 
-    setTransactions((prev) => [newTransaction, ...prev])
-    setAmount("")
-    setDescription("")
-    setPerson("")
-    setType("out")
+      if (!response.ok) {
+        throw new Error("İşlem kaydedilemedi")
+      }
+
+      const newTransaction = await response.json()
+      setTransactions((prev) => [newTransaction, ...prev])
+      setAmount("")
+      setDescription("")
+      setPerson("")
+      setType("out")
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "İşlem kaydedilemedi")
+    }
   }
 
   return (
-    <div className="h-full flex flex-col bg-background pb-16">
+    <div className="h-full flex flex-col bg-background pb-16 overflow-hidden">
       <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="px-6 py-4">
           <h1 className="text-xl font-bold text-gray-900">Finans</h1>
@@ -183,7 +192,17 @@ export default function FinancePage() {
         </div>
       </header>
 
-      <div className="flex-1 px-6 py-6 space-y-6">
+      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto min-h-0">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            {error}
+          </div>
+        )}
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-secondary text-sm">
+            Finans verileri yükleniyor...
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div className="text-xs text-secondary">Nakit Toplamı</div>
