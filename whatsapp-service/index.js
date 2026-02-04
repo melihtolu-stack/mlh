@@ -138,8 +138,44 @@ client.on('loading_screen', (percent, message) => {
   console.log(`⏳ Loading: ${percent}% - ${message}`);
 });
 
+// Track state changes to detect loops
+let stateChanges = [];
+let lastStateChangeTime = Date.now();
+
 client.on('change_state', (state) => {
-  console.log(`🔄 State changed to: ${state}`);
+  const now = Date.now();
+  const timeSinceLastChange = now - lastStateChangeTime;
+  lastStateChangeTime = now;
+  
+  console.log(`🔄 State changed to: ${state} (after ${timeSinceLastChange}ms)`);
+  
+  // Track last 10 state changes
+  stateChanges.push({ state, time: now });
+  if (stateChanges.length > 10) {
+    stateChanges.shift();
+  }
+  
+  // Detect connection loop (same states repeating quickly)
+  if (stateChanges.length >= 6) {
+    const recentStates = stateChanges.slice(-6).map(s => s.state);
+    const firstThree = recentStates.slice(0, 3).join(',');
+    const lastThree = recentStates.slice(3, 6).join(',');
+    
+    if (firstThree === lastThree) {
+      console.error('⚠️ CONNECTION LOOP DETECTED!');
+      console.error('🔄 States repeating:', firstThree);
+      console.error('💡 Possible causes:');
+      console.error('   1. Session corruption - Delete volume and rescan QR');
+      console.error('   2. Network issue - Check connectivity');
+      console.error('   3. WhatsApp conflict - Another device using same number');
+      console.error('   4. Memory issue - Increase container memory');
+      console.error('');
+      console.error('🛠️ Recommended action: Stop service, delete volume, restart, rescan QR');
+      
+      // Clear state tracking to avoid spam
+      stateChanges = [];
+    }
+  }
 });
 
 client.on('ready', () => {
@@ -170,13 +206,28 @@ client.on('auth_failure', (msg) => {
 client.on('disconnected', (reason) => {
   const timestamp = new Date().toLocaleString('tr-TR');
   console.log(`📴 Disconnected [${timestamp}]:`, reason);
-  console.log('🔄 Client will attempt to reconnect...');
   clientReady = false;
   
-  // Only cleanup if it's a critical disconnection
-  if (reason === 'NAVIGATION' || reason === 'CONFLICT') {
-    console.log('🧹 Running cleanup due to critical disconnect...');
+  // Handle different disconnect reasons
+  if (reason === 'CONFLICT') {
+    console.error('⚠️ CONFLICT: Another WhatsApp Web session detected!');
+    console.error('💡 Action: Close other WhatsApp Web/Desktop instances');
     cleanupChromium();
+  } else if (reason === 'NAVIGATION') {
+    console.error('⚠️ NAVIGATION: Page navigation detected');
+    console.error('🔄 Will attempt reconnect after cleanup...');
+    cleanupChromium();
+  } else if (reason === 'UNPAIRED') {
+    console.error('⚠️ UNPAIRED: Session expired or device was unlinked');
+    console.error('💡 Action: Need to scan QR code again');
+    cleanupChromium();
+  } else if (reason === 'LOGOUT') {
+    console.error('⚠️ LOGOUT: User logged out from WhatsApp');
+    console.error('💡 Action: Need to scan QR code again');
+    cleanupChromium();
+  } else {
+    console.log('🔄 Client will attempt to reconnect...');
+    // Don't cleanup for minor disconnects
   }
 });
 
