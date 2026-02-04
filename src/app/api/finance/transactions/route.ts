@@ -6,14 +6,25 @@ export async function GET() {
     const supabase = createServerClient()
     const { data, error } = await supabase
       .from("finance_transactions")
-      .select("*")
+      .select("id, amount, type, description, person, created_at, category_id, finance_categories(id, name)")
       .order("created_at", { ascending: false })
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    const mapped = (data || []).map((item) => ({
+      id: item.id,
+      amount: Number(item.amount),
+      type: item.type,
+      description: item.description,
+      person: item.person,
+      createdAt: item.created_at,
+      categoryId: item.category_id,
+      categoryName: item.finance_categories?.name || null,
+    }))
+
+    return NextResponse.json(mapped)
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
@@ -26,8 +37,9 @@ export async function POST(request: Request) {
     const type = body.type === "in" ? "in" : "out"
     const description = typeof body.description === "string" ? body.description.trim() : ""
     const person = typeof body.person === "string" ? body.person.trim() : ""
+    const categoryId = typeof body.category_id === "string" ? body.category_id : ""
 
-    if (!amount || amount <= 0 || !description || !person) {
+    if (!amount || amount <= 0 || !description || !person || !categoryId) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
@@ -39,15 +51,25 @@ export async function POST(request: Request) {
         type,
         description,
         person,
+        category_id: categoryId,
       })
-      .select("*")
+      .select("id, amount, type, description, person, created_at, category_id, finance_categories(id, name)")
       .single()
 
     if (error) {
       return NextResponse.json({ error: "Failed to save transaction" }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      id: data.id,
+      amount: Number(data.amount),
+      type: data.type,
+      description: data.description,
+      person: data.person,
+      createdAt: data.created_at,
+      categoryId: data.category_id,
+      categoryName: data.finance_categories?.name || null,
+    })
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

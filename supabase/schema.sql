@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Finance categories table
+CREATE TABLE IF NOT EXISTS finance_categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Finance transactions table
 CREATE TABLE IF NOT EXISTS finance_transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -42,6 +49,7 @@ CREATE TABLE IF NOT EXISTS finance_transactions (
   type TEXT NOT NULL CHECK (type IN ('in', 'out')),
   description TEXT NOT NULL,
   person TEXT NOT NULL,
+  category_id UUID REFERENCES finance_categories(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -51,6 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON conversations(la
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON messages(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_finance_transactions_created_at ON finance_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_finance_transactions_category_id ON finance_transactions(category_id);
 
 -- Function to update conversation's last_message and last_message_at
 CREATE OR REPLACE FUNCTION update_conversation_on_message()
@@ -78,6 +87,7 @@ ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE finance_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE finance_categories ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies - Allow all operations for now (adjust based on your auth needs)
 CREATE POLICY "Allow all operations on customers" ON customers
@@ -90,6 +100,9 @@ CREATE POLICY "Allow all operations on messages" ON messages
   FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Allow all operations on finance_transactions" ON finance_transactions
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on finance_categories" ON finance_categories
   FOR ALL USING (true) WITH CHECK (true);
 
 -- Enable Realtime for tables

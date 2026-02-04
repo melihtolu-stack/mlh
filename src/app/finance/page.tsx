@@ -11,7 +11,14 @@ interface Transaction {
   type: TransactionType
   description: string
   person: string
+  categoryId?: string | null
+  categoryName?: string | null
   createdAt: string
+}
+
+interface Category {
+  id: string
+  name: string
 }
 
 const formatMoney = (value: number) => {
@@ -82,22 +89,32 @@ const PieChart = ({
 
 export default function FinancePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [amount, setAmount] = useState("")
   const [type, setType] = useState<TransactionType>("out")
   const [description, setDescription] = useState("")
   const [person, setPerson] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [newCategory, setNewCategory] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    const fetchTransactions = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
-        const response = await fetch("/api/finance/transactions")
-        if (!response.ok) {
+        const [transactionsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/finance/transactions"),
+          fetch("/api/finance/categories"),
+        ])
+        if (!transactionsResponse.ok || !categoriesResponse.ok) {
           throw new Error("Finans verileri yüklenemedi")
         }
-        const data = await response.json()
-        setTransactions(data)
+        const [transactionsData, categoriesData] = await Promise.all([
+          transactionsResponse.json(),
+          categoriesResponse.json(),
+        ])
+        setTransactions(transactionsData)
+        setCategories(categoriesData)
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Finans verileri yüklenemedi")
@@ -106,7 +123,7 @@ export default function FinancePage() {
       }
     }
 
-    fetchTransactions()
+    fetchData()
   }, [])
 
   const totals = useMemo(() => {
@@ -126,7 +143,7 @@ export default function FinancePage() {
     transactions
       .filter((t) => t.type === "out")
       .forEach((t) => {
-        const category = getExpenseCategory(t.description)
+        const category = t.categoryName || getExpenseCategory(t.description)
         categories.set(category, (categories.get(category) || 0) + t.amount)
       })
 
@@ -153,7 +170,7 @@ export default function FinancePage() {
 
   const addTransaction = async () => {
     const parsedAmount = Number(amount.replace(",", "."))
-    if (!parsedAmount || parsedAmount <= 0 || !description.trim() || !person.trim()) return
+    if (!parsedAmount || parsedAmount <= 0 || !description.trim() || !person.trim() || !selectedCategory) return
 
     try {
       const response = await fetch("/api/finance/transactions", {
@@ -164,6 +181,7 @@ export default function FinancePage() {
           type,
           description: description.trim(),
           person: person.trim(),
+          category_id: selectedCategory,
         }),
       })
 
@@ -176,10 +194,49 @@ export default function FinancePage() {
       setAmount("")
       setDescription("")
       setPerson("")
+      setSelectedCategory("")
       setType("out")
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : "İşlem kaydedilemedi")
+    }
+  }
+
+  const addCategory = async () => {
+    if (!newCategory.trim()) return
+    try {
+      const response = await fetch("/api/finance/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCategory.trim() }),
+      })
+      if (!response.ok) {
+        throw new Error("Kategori eklenemedi")
+      }
+      const created = await response.json()
+      setCategories((prev) => [...prev, created])
+      setNewCategory("")
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kategori eklenemedi")
+    }
+  }
+
+  const deleteCategory = async (categoryId: string) => {
+    try {
+      const response = await fetch(`/api/finance/categories/${categoryId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        throw new Error("Kategori silinemedi")
+      }
+      setCategories((prev) => prev.filter((cat) => cat.id !== categoryId))
+      if (selectedCategory === categoryId) {
+        setSelectedCategory("")
+      }
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kategori silinemedi")
     }
   }
 
@@ -249,6 +306,21 @@ export default function FinancePage() {
               </select>
             </div>
             <div>
+              <label className="text-xs text-secondary">Kategori</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full mt-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">Kategori seçin</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="text-xs text-secondary">Açıklama</label>
               <input
                 value={description}
@@ -278,6 +350,43 @@ export default function FinancePage() {
           <p className="text-xs text-secondary mt-3">
             Gider dağılımı açıklama metnindeki anahtar kelimelerle otomatik sınıflanır.
           </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div className="text-gray-900 font-semibold mb-4">Kategori Yönetimi</div>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="Yeni kategori adı"
+              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <button
+              onClick={addCategory}
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
+            >
+              Kategori Ekle
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-800"
+              >
+                <span>{cat.name}</span>
+                <button
+                  onClick={() => deleteCategory(cat.id)}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  Sil
+                </button>
+              </div>
+            ))}
+            {categories.length === 0 && (
+              <div className="text-sm text-secondary">Henüz kategori yok</div>
+            )}
+          </div>
         </div>
       </div>
 
