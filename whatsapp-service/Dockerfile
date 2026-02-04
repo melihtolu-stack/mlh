@@ -3,6 +3,7 @@ FROM node:20-slim
 # Baileys doesn't need Chromium! Much lighter image
 RUN apt-get update && apt-get install -y \
     curl \
+    git \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
