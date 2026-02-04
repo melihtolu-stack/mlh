@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.supabase_client import supabase
 from services.message_service import get_message_service
+from services.whatsapp_service import get_whatsapp_service
+from services.translation_service import get_translation_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,18 +65,20 @@ async def send_message(request: MessageSendRequest):
         customer_id = conversation.get('customer_id')
         channel = conversation.get('channel', 'whatsapp')
 
-        # Get customer email
+        # Get customer email and phone
         customer_email = None
+        customer_phone = None
         if customer_id:
             customer_response = (
                 supabase
                 .table("customers")
-                .select("email")
+                .select("email, phone")
                 .eq("id", customer_id)
                 .execute()
             )
             if customer_response.data and len(customer_response.data) > 0:
                 customer_email = customer_response.data[0].get('email')
+                customer_phone = customer_response.data[0].get('phone')
 
         # Get customer's language from previous messages
         message_service = get_message_service()
@@ -106,11 +110,42 @@ async def send_message(request: MessageSendRequest):
                     logger.info(f"Email successfully sent for conversation {conversation_id}")
                 else:
                     logger.warning(f"Email was NOT sent for conversation {conversation_id} - check logs above for details")
+            
+            # Handle WhatsApp channel
+            whatsapp_sent = False
+            if channel == 'whatsapp' and customer_phone:
+                try:
+                    # Translate message to customer's language
+                    translated_message = turkish_content
+                    if customer_language and customer_language != 'tr' and customer_language != 'unknown':
+                        translator = get_translation_service()
+                        translated_message = translator.translate_from_turkish(
+                            turkish_content,
+                            target_language=customer_language
+                        )
+                        if not translated_message:
+                            logger.warning(f"Translation failed, sending Turkish content as-is")
+                            translated_message = turkish_content
+                        else:
+                            logger.info(f"Translated message from Turkish to {customer_language}")
+                    
+                    # Send WhatsApp message
+                    whatsapp_service = get_whatsapp_service()
+                    result = await whatsapp_service.send_message(customer_phone, translated_message)
+                    
+                    if result.get('success'):
+                        whatsapp_sent = True
+                        logger.info(f"WhatsApp message successfully sent to {customer_phone}")
+                    else:
+                        logger.error(f"Failed to send WhatsApp message: {result.get('error')}")
+                        
+                except Exception as e:
+                    logger.error(f"Error sending WhatsApp message: {e}", exc_info=True)
 
             return MessageSendResponse(
                 success=True,
                 message_id=message.get('id'),
-                email_sent=email_sent
+                email_sent=email_sent or whatsapp_sent  # Return True if either email or WhatsApp sent
             )
 
         except Exception as e:
