@@ -461,10 +461,11 @@ export default function ChatPage() {
         <div className="max-w-4xl mx-auto px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-end gap-2 sm:gap-3">
             <label
-              className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 sm:p-3 rounded-2xl transition-colors cursor-pointer"
-              title="Dosya ekle"
+              className="flex-shrink-0 flex items-center gap-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-3 py-2.5 sm:px-4 sm:py-3 rounded-2xl transition-colors cursor-pointer shadow-sm"
+              title="Medya veya dosya ekle"
             >
               <Paperclip size={18} />
+              <span className="text-xs font-medium hidden sm:inline">Medya</span>
               <input
                 type="file"
                 multiple
