@@ -4,6 +4,7 @@ Handles message sending endpoints
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional, List, Dict
 from services.supabase_client import supabase
 from services.message_service import get_message_service
 from services.whatsapp_service import get_whatsapp_service
@@ -17,7 +18,8 @@ router = APIRouter(prefix="/api/messages", tags=["Messages"])
 
 class MessageSendRequest(BaseModel):
     conversation_id: str
-    content: str
+    content: Optional[str] = None
+    media: Optional[List[Dict]] = None
 
 
 class MessageSendResponse(BaseModel):
@@ -39,9 +41,11 @@ async def send_message(request: MessageSendRequest):
     """
     try:
         conversation_id = request.conversation_id
-        turkish_content = request.content.strip()
+        raw_content = (request.content or "").strip()
+        media = request.media or []
+        has_media = len(media) > 0
 
-        if not turkish_content:
+        if not raw_content and not has_media:
             raise HTTPException(
                 status_code=400,
                 detail="Message content cannot be empty"
@@ -85,13 +89,17 @@ async def send_message(request: MessageSendRequest):
         message_service = get_message_service()
         customer_language = message_service.get_customer_language(conversation_id)
 
+        # Use placeholder content for media-only messages
+        turkish_content = raw_content or "Medya"
+
         # Create agent message (this will handle translation and email sending)
         try:
             message = message_service.create_agent_message(
                 conversation_id=conversation_id,
                 turkish_content=turkish_content,
                 customer_language=customer_language,
-                customer_email=customer_email
+                customer_email=customer_email,
+                media=media
             )
 
             # Update conversation
@@ -117,27 +125,34 @@ async def send_message(request: MessageSendRequest):
             blocked_reason = message.get('send_blocked_reason')
             if channel == 'whatsapp' and customer_phone:
                 try:
-                    if not customer_language or customer_language == 'unknown':
-                        blocked_reason = "Customer language is unknown. WhatsApp reply not sent."
-                        logger.warning(f"WhatsApp reply blocked for {customer_phone}: {blocked_reason}")
-                    else:
-                        # Translate message to customer's language
-                        translated_message = turkish_content
-                        if customer_language and customer_language != 'tr' and customer_language != 'unknown':
-                            translator = get_translation_service()
-                            translated_message = translator.translate_from_turkish(
-                                turkish_content,
-                                target_language=customer_language
-                            )
-                            if not translated_message:
-                                logger.warning(f"Translation failed, sending Turkish content as-is")
-                                translated_message = turkish_content
-                            else:
-                                logger.info(f"Translated message from Turkish to {customer_language}")
-                    
-                        # Send WhatsApp message
+                    translated_message = raw_content
+                    if raw_content:
+                        if not customer_language or customer_language == 'unknown':
+                            blocked_reason = "Customer language is unknown. WhatsApp reply not sent."
+                            logger.warning(f"WhatsApp reply blocked for {customer_phone}: {blocked_reason}")
+                            translated_message = None
+                        else:
+                            if customer_language != 'tr':
+                                translator = get_translation_service()
+                                translated_message = translator.translate_from_turkish(
+                                    raw_content,
+                                    target_language=customer_language
+                                )
+                                if not translated_message:
+                                    logger.warning("Translation failed, sending Turkish content as-is")
+                                    translated_message = raw_content
+                                else:
+                                    logger.info(f"Translated message from Turkish to {customer_language}")
+                    elif has_media:
+                        translated_message = None
+
+                    if translated_message is not None or has_media:
                         whatsapp_service = get_whatsapp_service()
-                        result = await whatsapp_service.send_message(customer_phone, translated_message)
+                        result = await whatsapp_service.send_message(
+                            customer_phone,
+                            translated_message or "",
+                            media=media
+                        )
                         
                         if result.get('success'):
                             whatsapp_sent = True

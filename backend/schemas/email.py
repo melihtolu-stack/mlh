@@ -2,7 +2,8 @@
 Email schemas for request/response validation
 """
 from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from schemas.media import MediaAttachment
 
 class EmailIncomingRequest(BaseModel):
     """
@@ -14,6 +15,7 @@ class EmailIncomingRequest(BaseModel):
     body: str
     html_body: Optional[str] = None
     headers: Optional[Dict[str, Any]] = None
+    attachments: Optional[List[MediaAttachment]] = None
 
 class EmailIncomingResponse(BaseModel):
     """

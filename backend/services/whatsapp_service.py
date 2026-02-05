@@ -22,7 +22,7 @@ class WhatsAppService:
         self.base_url = base_url or WHATSAPP_SERVICE_URL
         self.timeout = 30.0  # seconds
     
-    async def send_message(self, to: str, message: str, message_type: str = "text") -> Dict[str, Any]:
+    async def send_message(self, to: str, message: str, message_type: str = "text", media: Optional[list] = None) -> Dict[str, Any]:
         """
         Send a WhatsApp message
         
@@ -43,7 +43,8 @@ class WhatsAppService:
             payload = {
                 "to": clean_number,
                 "message": message,
-                "type": message_type
+                "type": message_type,
+                "media": media or []
             }
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:

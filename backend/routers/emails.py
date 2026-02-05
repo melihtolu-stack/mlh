@@ -8,6 +8,7 @@ from services.email_parser import get_email_parser_service
 from services.language_detection import get_language_detection_service
 from services.translation_service import get_translation_service
 from services.message_service import get_message_service
+from services.media_service import get_media_service
 from services.supabase_client import supabase
 import logging
 
@@ -41,6 +42,10 @@ async def handle_incoming_email(request: EmailIncomingRequest):
         customer_phone = parsed_data.get('phone') or ""
         customer_email = parsed_data.get('email') or request.from_email
         message_content = parsed_data.get('content') or request.body
+        attachments = request.attachments or []
+
+        if not message_content and attachments:
+            message_content = "Medya"
         
         if not message_content:
             raise HTTPException(
@@ -144,6 +149,10 @@ async def handle_incoming_email(request: EmailIncomingRequest):
             
             conversation = create_conv_response.data[0]
         
+        # Process attachments
+        media_service = get_media_service()
+        media = media_service.process_attachments(attachments, conversation['id'])
+
         # Create message with translation
         # Pass Turkish content as 'content', original as 'original_content', and detected language
         message = message_service.create_customer_message(
@@ -151,7 +160,8 @@ async def handle_incoming_email(request: EmailIncomingRequest):
             content=display_content,  # Turkish translated content (for CRM display)
             original_content=message_content,  # Original message in customer's language
             original_language=detected_language,  # Detected language code
-            customer_email=customer_email
+            customer_email=customer_email,
+            media=media
         )
         
         # Update conversation with Turkish content (display_content)

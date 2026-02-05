@@ -2,8 +2,9 @@
 WhatsApp schemas for request/response validation
 """
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from schemas.media import MediaAttachment
 
 
 class WhatsAppContactInfo(BaseModel):
@@ -30,6 +31,7 @@ class WhatsAppIncomingRequest(BaseModel):
     type: Optional[str] = "text"
     is_group: Optional[bool] = False
     contact: Optional[WhatsAppContactInfo] = None
+    attachments: Optional[List[MediaAttachment]] = None
 
     class Config:
         # Allow extra fields from webhook

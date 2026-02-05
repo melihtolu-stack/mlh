@@ -8,6 +8,7 @@ from services.language_detection import get_language_detection_service
 from services.translation_service import get_translation_service
 from services.message_service import get_message_service
 from services.whatsapp_service import get_whatsapp_service
+from services.media_service import get_media_service
 from services.supabase_client import supabase
 import logging
 
@@ -81,7 +82,11 @@ async def handle_incoming_whatsapp(request: WhatsAppIncomingRequest):
             customer_name = f"WhatsApp {phone_number}"
         
         message_content = request.content
+        attachments = request.attachments or []
         
+        if not message_content and attachments:
+            message_content = "Medya"
+
         if not message_content:
             raise HTTPException(
                 status_code=400,
@@ -204,13 +209,18 @@ async def handle_incoming_whatsapp(request: WhatsAppIncomingRequest):
             conversation = create_conv_response.data[0]
             logger.info(f"Created new WhatsApp conversation for customer: {customer['id']}")
         
+        # Process attachments
+        media_service = get_media_service()
+        media = media_service.process_attachments(attachments, conversation['id'])
+
         # Create message with translation
         message = message_service.create_customer_message(
             conversation_id=conversation['id'],
             content=display_content,  # Turkish translated content (for CRM display)
             original_content=message_content,  # Original message in customer's language
             original_language=detected_language,  # Detected language code
-            customer_email=None  # No email for WhatsApp
+            customer_email=None,  # No email for WhatsApp
+            media=media
         )
         
         # Update conversation with Turkish content (display_content)

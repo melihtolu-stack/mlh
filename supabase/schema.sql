@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS messages (
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender TEXT NOT NULL, -- 'customer' or 'agent'
   content TEXT NOT NULL,
+  media JSONB,
   is_read BOOLEAN DEFAULT false,
   sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

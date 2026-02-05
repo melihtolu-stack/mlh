@@ -5,11 +5,15 @@ Supports SMTP for sending and webhook for receiving
 """
 import ssl
 import smtplib
+import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict
+from email.mime.base import MIMEBase
+from email import encoders
+from typing import Optional, Dict, List
 import os
 import logging
+import httpx
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -43,7 +47,8 @@ class EmailService:
     
     def send_email(self, to_email: str, subject: str, body: str, 
                    is_html: bool = False, reply_to: Optional[str] = None,
-                   in_reply_to: Optional[str] = None) -> bool:
+                   in_reply_to: Optional[str] = None,
+                   attachments: Optional[List[Dict]] = None) -> bool:
         """
         Send an email via SMTP
         
@@ -89,6 +94,34 @@ class EmailService:
                 msg.attach(MIMEText(body, 'html'))
             else:
                 msg.attach(MIMEText(body, 'plain'))
+
+            # Attach files if provided
+            if attachments:
+                for attachment in attachments:
+                    try:
+                        filename = attachment.get("name") or "attachment"
+                        content_type = attachment.get("type") or "application/octet-stream"
+                        data = None
+
+                        if attachment.get("data"):
+                            data = base64.b64decode(attachment.get("data"))
+                        elif attachment.get("url"):
+                            resp = httpx.get(attachment.get("url"), timeout=20.0)
+                            if resp.status_code == 200:
+                                data = resp.content
+
+                        if not data:
+                            logger.warning(f"Skipping attachment without data: {filename}")
+                            continue
+
+                        maintype, subtype = content_type.split("/", 1) if "/" in content_type else ("application", "octet-stream")
+                        part = MIMEBase(maintype, subtype)
+                        part.set_payload(data)
+                        encoders.encode_base64(part)
+                        part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
+                        msg.attach(part)
+                    except Exception as e:
+                        logger.warning(f"Failed to attach file {attachment.get('name')}: {e}")
             
             # Send email with appropriate method based on port
             context = ssl.create_default_context()
@@ -149,7 +182,8 @@ class EmailService:
                              turkish_message: str, target_language: str,
                              original_language: Optional[str] = None,
                              original_subject: Optional[str] = None,
-                             message_id: Optional[str] = None) -> bool:
+                             message_id: Optional[str] = None,
+                             attachments: Optional[List[Dict]] = None) -> bool:
         """
         Send a translated reply email to customer
         
@@ -208,7 +242,8 @@ Best regards,
             body=body, 
             is_html=False,
             reply_to=self.from_email,
-            in_reply_to=in_reply_to
+            in_reply_to=in_reply_to,
+            attachments=attachments
         )
     
     def is_configured(self) -> bool:

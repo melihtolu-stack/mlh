@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
-import { ArrowLeft, Send, Power } from "lucide-react"
+import { ArrowLeft, Send, Power, Paperclip, X } from "lucide-react"
 
 interface Message {
   id: string
@@ -16,6 +16,14 @@ interface Message {
   original_language?: string | null
   is_read: boolean
   sent_at: string
+  media?: MediaItem[] | null
+}
+
+interface MediaItem {
+  url: string
+  name?: string
+  type?: string
+  size?: number
 }
 
 interface Customer {
@@ -48,6 +56,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const [input, setInput] = useState("")
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
 
   useEffect(() => {
     if (!conversationId) return
@@ -125,8 +134,40 @@ export default function ChatPage() {
     }
   }
 
+  const handleFilesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+    setAttachments((prev) => [...prev, ...files])
+    event.target.value = ""
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadAttachments = async () => {
+    if (attachments.length === 0) return []
+
+    const formData = new FormData()
+    formData.append("conversation_id", conversationId)
+    attachments.forEach((file) => formData.append("files", file))
+
+    const response = await fetch("/api/messages/upload", {
+      method: "POST",
+      body: formData
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Upload failed" }))
+      throw new Error(errorData.error || "Upload failed")
+    }
+
+    const data = await response.json()
+    return data.files || []
+  }
+
   const sendMessage = async () => {
-    if (!input.trim() || sending) return
+    if ((!input.trim() && attachments.length === 0) || sending) return
 
     const messageContent = input.trim()
     setInput("")
@@ -134,6 +175,7 @@ export default function ChatPage() {
     setNotification(null)
 
     try {
+      const uploadedMedia = await uploadAttachments()
       const response = await fetch('/api/messages/send', {
         method: 'POST',
         headers: {
@@ -142,6 +184,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           conversation_id: conversationId,
           content: messageContent,
+          media: uploadedMedia
         }),
       })
 
@@ -159,6 +202,7 @@ export default function ChatPage() {
         setMessages((prev) => [...prev, newMessage])
         scrollToBottom()
         fetchConversation()
+        setAttachments([])
         
         // Show notification
         if (result.blocked_reason) {
@@ -210,6 +254,61 @@ export default function ChatPage() {
       return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     }
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+  }
+
+  const renderMedia = (media: MediaItem[]) => {
+    return (
+      <div className="mt-3 grid gap-3">
+        {media.map((item, index) => {
+          const type = item.type || ""
+          if (type.startsWith("image/")) {
+            return (
+              <img
+                key={`${item.url}-${index}`}
+                src={item.url}
+                alt={item.name || "media"}
+                className="rounded-xl max-h-64 w-auto object-contain border border-gray-200"
+              />
+            )
+          }
+
+          if (type.startsWith("video/")) {
+            return (
+              <video
+                key={`${item.url}-${index}`}
+                src={item.url}
+                controls
+                className="rounded-xl max-h-64 w-full border border-gray-200"
+              />
+            )
+          }
+
+          if (type.startsWith("audio/")) {
+            return (
+              <audio
+                key={`${item.url}-${index}`}
+                src={item.url}
+                controls
+                className="w-full"
+              />
+            )
+          }
+
+          return (
+            <a
+              key={`${item.url}-${index}`}
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-sm"
+            >
+              <span className="font-medium text-gray-800">{item.name || "Dosya"}</span>
+              <span className="text-xs text-secondary">İndir</span>
+            </a>
+          )
+        })}
+      </div>
+    )
   }
 
   if (!conversation) {
@@ -336,7 +435,10 @@ export default function ChatPage() {
                         : 'bg-white text-gray-900 border-gray-200 hover:border-gray-300 transition-colors'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                    {msg.content && (
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                    )}
+                    {msg.media && msg.media.length > 0 && renderMedia(msg.media)}
                     {msg.sender !== 'agent' && msg.original_content && msg.original_content !== msg.content && (
                       <p className="text-xs text-secondary italic mt-2 whitespace-pre-wrap break-words">
                         {msg.original_content}
@@ -358,6 +460,19 @@ export default function ChatPage() {
       <div className="bg-white border-t border-gray-200 shadow-lg safe-area-pb">
         <div className="max-w-4xl mx-auto px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-end gap-2 sm:gap-3">
+            <label
+              className="flex-shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 sm:p-3 rounded-2xl transition-colors cursor-pointer"
+              title="Dosya ekle"
+            >
+              <Paperclip size={18} />
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFilesSelected}
+                disabled={sending}
+              />
+            </label>
             <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] flex items-center focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all shadow-sm">
               <input
                 type="text"
@@ -376,7 +491,7 @@ export default function ChatPage() {
             </div>
             <button
               onClick={sendMessage}
-              disabled={sending || !input.trim()}
+              disabled={sending || (!input.trim() && attachments.length === 0)}
               className="bg-primary text-white p-2.5 sm:p-3 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all flex-shrink-0 shadow-md"
               aria-label="Mesaj gönder"
             >
@@ -387,6 +502,26 @@ export default function ChatPage() {
               )}
             </button>
           </div>
+          {attachments.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {attachments.map((file, index) => (
+                <div
+                  key={`${file.name}-${index}`}
+                  className="flex items-center gap-2 bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700"
+                >
+                  <span className="truncate max-w-[180px]">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(index)}
+                    className="text-gray-500 hover:text-gray-700"
+                    aria-label="Dosyayı kaldır"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

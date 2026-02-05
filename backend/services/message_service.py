@@ -23,7 +23,8 @@ class MessageService:
     def create_customer_message(self, conversation_id: str, content: str,
                                 original_content: Optional[str] = None,
                                 original_language: Optional[str] = None,
-                                customer_email: Optional[str] = None) -> Optional[Dict]:
+                                customer_email: Optional[str] = None,
+                                media: Optional[list] = None) -> Optional[Dict]:
         """
         Create a customer message with translation support
         
@@ -57,7 +58,8 @@ class MessageService:
                 'original_content': original_content,  # Original language content
                 'original_language': original_language,  # Language code (e.g., 'en', 'de', 'fr')
                 'translated_content': translated_content,  # Turkish translation (same as content)
-                'is_read': False
+                'is_read': False,
+                'media': media
             }
             
             response = (
@@ -79,7 +81,8 @@ class MessageService:
     
     def create_agent_message(self, conversation_id: str, turkish_content: str,
                             customer_language: Optional[str] = None,
-                            customer_email: Optional[str] = None) -> Dict:
+                            customer_email: Optional[str] = None,
+                            media: Optional[list] = None) -> Dict:
         """
         Create an agent message (in Turkish) and optionally send translated version to customer
         
@@ -103,7 +106,8 @@ class MessageService:
                 'original_content': turkish_content,  # Same as content for agent messages
                 'original_language': 'tr',
                 'translated_content': turkish_content,  # Same as content
-                'is_read': True
+                'is_read': True,
+                'media': media
             }
             
             response = (
@@ -200,7 +204,8 @@ class MessageService:
                                     target_language=target_language,
                                     original_language='tr',
                                     original_subject=None,  # Can be enhanced to get from conversation metadata
-                                    message_id=last_customer_msg.get('id') if last_customer_msg else None
+                                    message_id=last_customer_msg.get('id') if last_customer_msg else None,
+                                    attachments=media
                                 )
                                 
                                 email_sent = email_sent_result

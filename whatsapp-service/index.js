@@ -1,4 +1,4 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const express = require('express');
@@ -91,7 +91,6 @@ const forceCleanupOnStartup = () => {
 
 // Initialize WhatsApp client
 // Use LocalAuth to keep a stable session between restarts
-const { LocalAuth } = require('whatsapp-web.js');
 
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: './data' }),
@@ -237,7 +236,7 @@ client.on('disconnected', (reason) => {
 // Message handler
 client.on('message', async (message) => {
   try {
-    if (message.isGroupMsg || !message.body?.trim()) return;
+    if (message.isGroupMsg) return;
 
     const contact = await message.getContact();
     const fromPhone = message.from.replace('@c.us', '').replace(/[^0-9]/g, '');
@@ -246,10 +245,23 @@ client.on('message', async (message) => {
       channel: "whatsapp",
       from_phone: fromPhone,
       from_name: contact.pushname || contact.name || null,
-      content: message.body,
+      content: message.body || "",
       message_id: message.id._serialized,
       timestamp: message.timestamp
     };
+
+    if (message.hasMedia) {
+      const media = await message.downloadMedia();
+      if (media) {
+        payload.attachments = [{
+          data: media.data,
+          type: media.mimetype,
+          name: media.filename || `whatsapp-${message.id._serialized}`
+        }];
+      }
+    }
+
+    if (!payload.content.trim() && !payload.attachments) return;
 
     console.log('📩 Message →', fromPhone);
     
@@ -311,12 +323,44 @@ app.get('/qr-display', async (req, res) => {
 
 app.post('/send', async (req, res) => {
   try {
-    const { to, message } = req.body;
-    if (!to || !message) return res.status(400).json({ success: false, error: 'Missing fields' });
+    const { to, message, media } = req.body;
+    const attachments = Array.isArray(media) ? media : [];
+    if (!to || (!message && attachments.length === 0)) {
+      return res.status(400).json({ success: false, error: 'Missing fields' });
+    }
     if (!clientReady) return res.status(503).json({ success: false, error: 'Not ready' });
     
     const chatId = to.includes('@') ? to : `${to.replace(/[^0-9]/g, '')}@c.us`;
-    const result = await client.sendMessage(chatId, message);
+    let result = null;
+
+    if (attachments.length > 0) {
+      for (const attachment of attachments) {
+        let mediaObj = null;
+        if (attachment.data) {
+          mediaObj = new MessageMedia(
+            attachment.type || 'application/octet-stream',
+            attachment.data,
+            attachment.name || 'attachment'
+          );
+        } else if (attachment.url) {
+          const resp = await axios.get(attachment.url, { responseType: 'arraybuffer', timeout: 20000 });
+          const base64 = Buffer.from(resp.data, 'binary').toString('base64');
+          mediaObj = new MessageMedia(
+            attachment.type || resp.headers['content-type'] || 'application/octet-stream',
+            base64,
+            attachment.name || 'attachment'
+          );
+        }
+
+        if (!mediaObj) continue;
+
+        result = await client.sendMessage(chatId, mediaObj, {
+          caption: message || ''
+        });
+      }
+    } else {
+      result = await client.sendMessage(chatId, message);
+    }
     
     res.json({ success: true, messageId: result.id._serialized });
   } catch (error) {

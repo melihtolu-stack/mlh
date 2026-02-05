@@ -8,14 +8,18 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { conversation_id, content } = body
+    const { conversation_id, content, media } = body
 
-    if (!conversation_id || !content) {
+    const hasMedia = Array.isArray(media) && media.length > 0
+    if (!conversation_id || (!content && !hasMedia)) {
       return NextResponse.json(
         { error: 'Missing conversation_id or content' },
         { status: 400 }
       )
     }
+
+    const trimmedContent = content ? content.trim() : ""
+    const fallbackContent = trimmedContent || (hasMedia ? "Medya" : "")
 
     // Get backend URL from environment
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
@@ -28,7 +32,8 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         conversation_id,
-        content: content.trim(),
+        content: trimmedContent,
+        media: hasMedia ? media : []
       }),
     })
 
@@ -77,7 +82,8 @@ export async function POST(request: Request) {
       id: result.message_id,
       conversation_id,
       sender: 'agent',
-      content: content.trim(),
+      content: fallbackContent,
+      media: hasMedia ? media : [],
       is_read: true,
       sent_at: new Date().toISOString(),
       email_sent: result.email_sent || false
