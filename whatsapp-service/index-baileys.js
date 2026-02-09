@@ -165,7 +165,7 @@ async function connectToWhatsApp() {
             from_name: pushName,
             content: messageText,
             message_id: message.key.id,
-            timestamp: message.messageTimestamp
+            timestamp: message.messageTimestamp ? Number(message.messageTimestamp) : null
           };
 
           if (attachments.length > 0) {

@@ -84,6 +84,14 @@ class MediaService:
 
         processed: List[Dict[str, Any]] = []
         for item in attachments:
+            if not isinstance(item, dict):
+                if hasattr(item, "model_dump"):
+                    item = item.model_dump()
+                elif hasattr(item, "dict"):
+                    item = item.dict()
+                else:
+                    item = dict(item.__dict__)
+
             url = item.get("url")
             data = item.get("data")
             name = item.get("name") or item.get("filename") or f"media-{uuid.uuid4().hex}"
