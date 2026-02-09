@@ -155,14 +155,37 @@ async function connectToWhatsApp() {
           if (!messageText.trim() && attachments.length === 0) continue;
           
           // Extract sender info
-          // Use senderPn (real phone number) if available, otherwise use remoteJid (for older formats)
-          const phoneField = message.key.senderPn || message.key.remoteJid;
           const from = message.key.remoteJid;
           const isGroup = from.endsWith('@g.us');
           
           // Skip group messages
           if (isGroup) continue;
           
+          const resolvePhoneNumber = async () => {
+            const senderPn = message.key.senderPn;
+            const remoteJidAlt = message.key.remoteJidAlt;
+
+            if (senderPn) return senderPn;
+            if (remoteJidAlt) return remoteJidAlt;
+
+            if (from && from.endsWith('@lid')) {
+              try {
+                const mappingStore = sock?.signalRepository?.getLIDMappingStore?.();
+                if (mappingStore?.getPNForLID) {
+                  const pn = await mappingStore.getPNForLID(from);
+                  if (pn) return pn;
+                }
+              } catch (error) {
+                console.error('❌ Failed to resolve LID mapping:', error.message);
+              }
+            }
+
+            return from;
+          };
+
+          const phoneField = await resolvePhoneNumber();
+          if (!phoneField) continue;
+
           // Clean phone number (remove all WhatsApp suffixes)
           const phoneNumber = phoneField.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
           
@@ -173,6 +196,7 @@ async function connectToWhatsApp() {
           console.log('📱 INCOMING MESSAGE DEBUG:');
           console.log('   ❌ remoteJid (ID):', from);
           console.log('   ✅ senderPn (Real):', message.key.senderPn);
+          console.log('   ✅ remoteJidAlt:', message.key.remoteJidAlt);
           console.log('   📞 Final phone:', phoneNumber);
           console.log('   👤 Push name:', pushName);
           console.log('   💬 Message:', messageText.substring(0, 50));
