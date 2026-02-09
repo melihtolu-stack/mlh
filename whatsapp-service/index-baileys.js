@@ -100,9 +100,21 @@ async function connectToWhatsApp() {
           // Skip if from me
           if (message.key.fromMe) continue;
           
+          const unwrapMessage = (msg) => {
+            return msg?.ephemeralMessage?.message ||
+                   msg?.viewOnceMessage?.message ||
+                   msg?.viewOnceMessageV2?.message ||
+                   msg?.viewOnceMessageV2Extension?.message ||
+                   msg;
+          };
+
+          const contentMessage = unwrapMessage(message.message);
+
           // Extract message content
-          const messageText = message.message.conversation || 
-                             message.message.extendedTextMessage?.text || 
+          const messageText = contentMessage?.conversation || 
+                             contentMessage?.extendedTextMessage?.text || 
+                             contentMessage?.imageMessage?.caption ||
+                             contentMessage?.videoMessage?.caption ||
                              '';
 
           const attachments = [];
@@ -128,10 +140,10 @@ async function connectToWhatsApp() {
             }
           };
 
-          await addAttachment(message.message.imageMessage, 'image/jpeg');
-          await addAttachment(message.message.videoMessage, 'video/mp4');
-          await addAttachment(message.message.audioMessage, 'audio/ogg');
-          await addAttachment(message.message.documentMessage, 'application/pdf');
+          await addAttachment(contentMessage?.imageMessage, 'image/jpeg');
+          await addAttachment(contentMessage?.videoMessage, 'video/mp4');
+          await addAttachment(contentMessage?.audioMessage, 'audio/ogg');
+          await addAttachment(contentMessage?.documentMessage, 'application/pdf');
 
           if (!messageText.trim() && attachments.length === 0) continue;
           
