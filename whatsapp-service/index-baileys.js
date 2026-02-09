@@ -90,6 +90,20 @@ async function connectToWhatsApp() {
     
     // Save credentials
     sock.ev.on('creds.update', saveCreds);
+
+    // LID mapping updates
+    sock.ev.on('lid-mapping.update', async (update) => {
+      try {
+        const mappingStore = sock?.signalRepository?.getLIDMappingStore?.();
+        if (!mappingStore?.storeLIDPNMappings) return;
+        const mappings = Array.isArray(update) ? update : update?.mappings;
+        if (mappings && mappings.length > 0) {
+          await mappingStore.storeLIDPNMappings(mappings);
+        }
+      } catch (error) {
+        console.error('❌ Failed to store LID mappings:', error.message);
+      }
+    });
     
     // Message handler
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
@@ -116,6 +130,45 @@ async function connectToWhatsApp() {
             ...message,
             message: contentMessage
           };
+
+          // Extract sender info
+          const from = message.key.remoteJid;
+          const isGroup = from.endsWith('@g.us');
+          
+          // Skip group messages
+          if (isGroup) continue;
+          
+          const resolvePhoneNumber = async () => {
+            const senderPn = message.key.senderPn;
+            const remoteJidAlt = message.key.remoteJidAlt;
+
+            if (senderPn) return senderPn;
+            if (remoteJidAlt) return remoteJidAlt;
+
+            if (from && from.endsWith('@lid')) {
+              try {
+                const mappingStore = sock?.signalRepository?.getLIDMappingStore?.();
+                if (mappingStore?.getPNForLID) {
+                  const pn = await mappingStore.getPNForLID(from);
+                  if (pn) return pn;
+                }
+              } catch (error) {
+                console.error('❌ Failed to resolve LID mapping:', error.message);
+              }
+            }
+
+            return from;
+          };
+
+          const phoneField = await resolvePhoneNumber();
+          if (!phoneField) continue;
+
+          // Clean phone number (remove all WhatsApp suffixes)
+          const phoneNumber = phoneField.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
+
+          if (messageForDownload.key?.remoteJid?.endsWith?.('@lid')) {
+            messageForDownload.key.remoteJid = phoneField;
+          }
 
           // Extract message content
           const messageText = contentMessage?.conversation || 
@@ -153,41 +206,6 @@ async function connectToWhatsApp() {
           await addAttachment(contentMessage?.documentMessage, 'application/pdf');
 
           if (!messageText.trim() && attachments.length === 0) continue;
-          
-          // Extract sender info
-          const from = message.key.remoteJid;
-          const isGroup = from.endsWith('@g.us');
-          
-          // Skip group messages
-          if (isGroup) continue;
-          
-          const resolvePhoneNumber = async () => {
-            const senderPn = message.key.senderPn;
-            const remoteJidAlt = message.key.remoteJidAlt;
-
-            if (senderPn) return senderPn;
-            if (remoteJidAlt) return remoteJidAlt;
-
-            if (from && from.endsWith('@lid')) {
-              try {
-                const mappingStore = sock?.signalRepository?.getLIDMappingStore?.();
-                if (mappingStore?.getPNForLID) {
-                  const pn = await mappingStore.getPNForLID(from);
-                  if (pn) return pn;
-                }
-              } catch (error) {
-                console.error('❌ Failed to resolve LID mapping:', error.message);
-              }
-            }
-
-            return from;
-          };
-
-          const phoneField = await resolvePhoneNumber();
-          if (!phoneField) continue;
-
-          // Clean phone number (remove all WhatsApp suffixes)
-          const phoneNumber = phoneField.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '');
           
           // Get sender name (if available)
           const pushName = message.pushName || null;
