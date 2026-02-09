@@ -126,9 +126,10 @@ async function connectToWhatsApp() {
           };
 
           const contentMessage = unwrapMessage(message.message);
+          const mediaContainer = contentMessage?.documentWithCaptionMessage?.message || contentMessage;
           const messageForDownload = {
             ...message,
-            message: contentMessage
+            message: mediaContainer
           };
 
           // Extract sender info
@@ -171,10 +172,11 @@ async function connectToWhatsApp() {
           }
 
           // Extract message content
-          const messageText = contentMessage?.conversation || 
-                             contentMessage?.extendedTextMessage?.text || 
-                             contentMessage?.imageMessage?.caption ||
-                             contentMessage?.videoMessage?.caption ||
+          const messageText = mediaContainer?.conversation || 
+                             mediaContainer?.extendedTextMessage?.text || 
+                             mediaContainer?.imageMessage?.caption ||
+                             mediaContainer?.videoMessage?.caption ||
+                             mediaContainer?.documentMessage?.caption ||
                              '';
 
           const attachments = [];
@@ -200,10 +202,11 @@ async function connectToWhatsApp() {
             }
           };
 
-          await addAttachment(contentMessage?.imageMessage, 'image/jpeg');
-          await addAttachment(contentMessage?.videoMessage, 'video/mp4');
-          await addAttachment(contentMessage?.audioMessage, 'audio/ogg');
-          await addAttachment(contentMessage?.documentMessage, 'application/pdf');
+          await addAttachment(mediaContainer?.imageMessage, 'image/jpeg');
+          await addAttachment(mediaContainer?.videoMessage, 'video/mp4');
+          await addAttachment(mediaContainer?.audioMessage, 'audio/ogg');
+          await addAttachment(mediaContainer?.documentMessage, 'application/pdf');
+          await addAttachment(mediaContainer?.stickerMessage, 'image/webp');
 
           if (!messageText.trim() && attachments.length === 0) continue;
           
