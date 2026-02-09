@@ -1,4 +1,4 @@
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, downloadMediaMessage, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, downloadMediaMessage, makeCacheableSignalKeyStore, normalizeMessageContent, getContentType } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
@@ -117,19 +117,12 @@ async function connectToWhatsApp() {
           // Skip if from me
           if (message.key.fromMe) continue;
           
-          const unwrapMessage = (msg) => {
-            return msg?.ephemeralMessage?.message ||
-                   msg?.viewOnceMessage?.message ||
-                   msg?.viewOnceMessageV2?.message ||
-                   msg?.viewOnceMessageV2Extension?.message ||
-                   msg;
-          };
-
-          const contentMessage = unwrapMessage(message.message);
-          const mediaContainer = contentMessage?.documentWithCaptionMessage?.message || contentMessage;
+          const contentMessage = normalizeMessageContent(message.message);
+          const messageType = contentMessage ? getContentType(contentMessage) : null;
+          const mediaMessage = messageType ? contentMessage?.[messageType] : null;
           const messageForDownload = {
             ...message,
-            message: mediaContainer
+            message: contentMessage
           };
 
           // Extract sender info
@@ -172,11 +165,11 @@ async function connectToWhatsApp() {
           }
 
           // Extract message content
-          const messageText = mediaContainer?.conversation || 
-                             mediaContainer?.extendedTextMessage?.text || 
-                             mediaContainer?.imageMessage?.caption ||
-                             mediaContainer?.videoMessage?.caption ||
-                             mediaContainer?.documentMessage?.caption ||
+          const messageText = contentMessage?.conversation || 
+                             contentMessage?.extendedTextMessage?.text || 
+                             contentMessage?.imageMessage?.caption ||
+                             contentMessage?.videoMessage?.caption ||
+                             contentMessage?.documentMessage?.caption ||
                              '';
 
           const attachments = [];
@@ -202,11 +195,11 @@ async function connectToWhatsApp() {
             }
           };
 
-          await addAttachment(mediaContainer?.imageMessage, 'image/jpeg');
-          await addAttachment(mediaContainer?.videoMessage, 'video/mp4');
-          await addAttachment(mediaContainer?.audioMessage, 'audio/ogg');
-          await addAttachment(mediaContainer?.documentMessage, 'application/pdf');
-          await addAttachment(mediaContainer?.stickerMessage, 'image/webp');
+          if (messageType === 'imageMessage') await addAttachment(mediaMessage, 'image/jpeg');
+          if (messageType === 'videoMessage') await addAttachment(mediaMessage, 'video/mp4');
+          if (messageType === 'audioMessage') await addAttachment(mediaMessage, 'audio/ogg');
+          if (messageType === 'documentMessage') await addAttachment(mediaMessage, 'application/pdf');
+          if (messageType === 'stickerMessage') await addAttachment(mediaMessage, 'image/webp');
 
           if (!messageText.trim() && attachments.length === 0) continue;
           
@@ -221,6 +214,7 @@ async function connectToWhatsApp() {
           console.log('   📞 Final phone:', phoneNumber);
           console.log('   👤 Push name:', pushName);
           console.log('   💬 Message:', messageText.substring(0, 50));
+          console.log('   🧾 MessageType:', messageType);
           
           // Prepare webhook payload
           const payload = {
