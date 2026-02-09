@@ -109,6 +109,10 @@ async function connectToWhatsApp() {
           };
 
           const contentMessage = unwrapMessage(message.message);
+          const messageForDownload = {
+            ...message,
+            message: contentMessage
+          };
 
           // Extract message content
           const messageText = contentMessage?.conversation || 
@@ -122,7 +126,7 @@ async function connectToWhatsApp() {
             if (!mediaMessage) return;
             try {
               const buffer = await downloadMediaMessage(
-                message,
+                messageForDownload,
                 'buffer',
                 {},
                 { logger, reuploadRequest: sock.updateMediaMessage }
