@@ -1,4 +1,4 @@
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
@@ -104,8 +104,36 @@ async function connectToWhatsApp() {
           const messageText = message.message.conversation || 
                              message.message.extendedTextMessage?.text || 
                              '';
-          
-          if (!messageText.trim()) continue;
+
+          const attachments = [];
+          const addAttachment = async (mediaMessage, fallbackType) => {
+            if (!mediaMessage) return;
+            try {
+              const buffer = await downloadMediaMessage(
+                message,
+                'buffer',
+                {},
+                { logger, reuploadRequest: sock.updateMediaMessage }
+              );
+              const mimetype = mediaMessage.mimetype || fallbackType || 'application/octet-stream';
+              const extension = mimetype.includes('/') ? mimetype.split('/')[1] : 'bin';
+              const fileName = mediaMessage.fileName || `whatsapp-${message.key.id}.${extension}`;
+              attachments.push({
+                data: buffer.toString('base64'),
+                type: mimetype,
+                name: fileName
+              });
+            } catch (error) {
+              console.error('❌ Failed to download media:', error.message);
+            }
+          };
+
+          await addAttachment(message.message.imageMessage, 'image/jpeg');
+          await addAttachment(message.message.videoMessage, 'video/mp4');
+          await addAttachment(message.message.audioMessage, 'audio/ogg');
+          await addAttachment(message.message.documentMessage, 'application/pdf');
+
+          if (!messageText.trim() && attachments.length === 0) continue;
           
           // Extract sender info
           // Use senderPn (real phone number) if available, otherwise use remoteJid (for older formats)
@@ -139,6 +167,10 @@ async function connectToWhatsApp() {
             message_id: message.key.id,
             timestamp: message.messageTimestamp
           };
+
+          if (attachments.length > 0) {
+            payload.attachments = attachments;
+          }
           
           console.log('📩 Message →', phoneNumber);
           
@@ -263,12 +295,13 @@ app.get('/qr-display', async (req, res) => {
 
 app.post('/send', async (req, res) => {
   try {
-    const { to, message } = req.body;
+    const { to, message, media } = req.body;
+    const attachments = Array.isArray(media) ? media : [];
     
-    if (!to || !message) {
+    if (!to || (!message && attachments.length === 0)) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: to, message'
+        error: 'Missing required fields: to, message or media'
       });
     }
     
@@ -284,10 +317,58 @@ app.post('/send', async (req, res) => {
     const cleanNumber = to.replace(/@s\.whatsapp\.net|@c\.us|@lid|@g\.us/g, '').replace(/[^0-9+]/g, '');
     const jid = `${cleanNumber}@s.whatsapp.net`;
     
-    // Send message
-    const sent = await sock.sendMessage(jid, { text: message });
+    let sent = null;
+    if (attachments.length > 0) {
+      for (let i = 0; i < attachments.length; i++) {
+        const attachment = attachments[i];
+        try {
+          let buffer = null;
+          if (attachment.data) {
+            buffer = Buffer.from(attachment.data, 'base64');
+          } else if (attachment.url) {
+            const resp = await axios.get(attachment.url, { responseType: 'arraybuffer', timeout: 20000 });
+            buffer = Buffer.from(resp.data);
+          }
+
+          if (!buffer) continue;
+
+          const mimetype = attachment.type || 'application/octet-stream';
+          const isImage = mimetype.startsWith('image/');
+          const isVideo = mimetype.startsWith('video/');
+          const isAudio = mimetype.startsWith('audio/');
+          const caption = i === 0 ? (message || '') : '';
+
+          if (isImage) {
+            sent = await sock.sendMessage(jid, { image: buffer, caption });
+          } else if (isVideo) {
+            sent = await sock.sendMessage(jid, { video: buffer, caption });
+          } else if (isAudio) {
+            sent = await sock.sendMessage(jid, { audio: buffer, mimetype, ptt: false });
+          } else {
+            sent = await sock.sendMessage(jid, {
+              document: buffer,
+              mimetype,
+              fileName: attachment.name || 'attachment'
+            });
+          }
+        } catch (error) {
+          console.error('❌ Failed to send media:', error.message);
+        }
+      }
+    }
+
+    if (!sent && message) {
+      sent = await sock.sendMessage(jid, { text: message });
+    }
     
-    console.log(`📤 Message sent to ${to}: ${message.substring(0, 50)}...`);
+    if (!sent) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send message'
+      });
+    }
+    
+    console.log(`📤 Message sent to ${to}: ${(message || '').substring(0, 50)}...`);
     
     res.json({
       success: true,
