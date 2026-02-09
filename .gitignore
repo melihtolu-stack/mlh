@@ -35,6 +35,7 @@ yarn-error.log*
 
 # whatsapp-web.js session data
 whatsapp-service/data/
+whatsapp-service/node_modules/
 
 # vercel
 .vercel
