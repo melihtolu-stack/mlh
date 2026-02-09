@@ -8,8 +8,8 @@
     "dev": "node --watch index-baileys.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.9",
     "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

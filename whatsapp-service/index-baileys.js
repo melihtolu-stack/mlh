@@ -1,4 +1,4 @@
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, downloadMediaMessage, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
@@ -39,7 +39,10 @@ async function connectToWhatsApp() {
       version,
       logger: logger.child({ level: 'error' }), // Only show errors
       printQRInTerminal: false, // We'll handle QR manually
-      auth: state,
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, logger)
+      },
       browser: ['MLH CRM', 'Chrome', '121.0.0'],
       defaultQueryTimeoutMs: 60000,
     });
