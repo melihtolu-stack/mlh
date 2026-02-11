@@ -310,7 +310,7 @@ def create_quote_request(quote_data: Dict[str, Any]) -> Dict[str, Any]:
             "created_at": datetime.utcnow().isoformat()
         }
         
-        result = supabase.table("quotes").insert(quote).execute()
+        result = supabase.table("showroom_quotes").insert(quote).execute()
         quote_id = result.data[0]["id"]
         
         # Quote items'ları ekle
@@ -321,7 +321,7 @@ def create_quote_request(quote_data: Dict[str, Any]) -> Dict[str, Any]:
                 "variant_id": str(item.get("variant_id")) if item.get("variant_id") else None,
                 "quantity": item["quantity"]
             }
-            supabase.table("quote_items").insert(quote_item).execute()
+            supabase.table("showroom_quote_items").insert(quote_item).execute()
         
         # Eğer cart_id varsa, sepeti temizle
         if quote_data.get("cart_id"):
