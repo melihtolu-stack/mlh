@@ -1,10 +1,12 @@
 import Link from "next/link"
 import type { Metadata } from "next"
+import { notFound } from "next/navigation"
 import { createServerClient } from "@/lib/supabase"
 import type { Product } from "@/types/products"
 import ProductDetailClient from "@/components/showroom/ProductDetailClient"
 
 export const dynamic = "force-dynamic"
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim()
 
 const mapProduct = (item: any): Product => ({
   id: item.id,
@@ -70,7 +72,6 @@ export default async function ShowroomProductPage({
   const resolvedParams = await Promise.resolve(params)
   const rawParam = typeof resolvedParams?.slug === "string" ? resolvedParams.slug : ""
   const rawSlug = decodeURIComponent(rawParam).trim()
-  console.log("URL SLUG:", rawSlug)
   const supabase = createServerClient()
   let { data, error } = await supabase.from("products").select("*").eq("slug", rawSlug).single()
   if (!data) {
@@ -78,15 +79,8 @@ export default async function ShowroomProductPage({
     data = fallback.data
     error = fallback.error
   }
-  console.log("DB RESULT:", data)
-  console.log("DB ERROR:", error)
-
   if (!data) {
-    return (
-      <pre className="whitespace-pre-wrap break-words bg-white p-6 text-xs text-gray-700">
-        {JSON.stringify({ slug: rawSlug, data, error }, null, 2)}
-      </pre>
-    )
+    notFound()
   }
 
   const product = mapProduct(data)
@@ -114,7 +108,7 @@ export default async function ShowroomProductPage({
           <div>
             <h1 className="text-3xl font-semibold text-gray-900">{product.name}</h1>
             <p className="text-sm text-gray-500 mt-3">
-              {product.shortDescription || product.description}
+              {stripHtml(product.shortDescription || product.description || "")}
             </p>
           </div>
         </div>
@@ -123,7 +117,7 @@ export default async function ShowroomProductPage({
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Product Details</h2>
             <p className="text-sm text-gray-600 leading-relaxed">
-              {product.description || product.shortDescription}
+              {stripHtml(product.description || product.shortDescription || "")}
             </p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">

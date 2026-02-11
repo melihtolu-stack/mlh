@@ -27,6 +27,7 @@ const toSlug = (value: string) =>
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim()
 
 export default function ShowroomPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -69,10 +70,6 @@ export default function ShowroomPage() {
         if (!res.ok) throw new Error("Failed to load products")
         const data = await res.json()
         const list = Array.isArray(data) ? data : []
-        console.log(
-          "SHOWROOM PRODUCTS:",
-          list.map((item: Product) => ({ id: item.id, name: item.name, slug: item.slug }))
-        )
         setProducts(list)
       } catch (err) {
         console.error(err)
@@ -238,22 +235,13 @@ export default function ShowroomPage() {
                       : toSlug(product.name || "")
                   const productHref = productSlug ? `/showroom/${productSlug}` : ""
 
-                  if (!productSlug) {
-                    console.warn("Missing product slug:", product)
-                  }
-
                   return (
                     <div
                       key={product.id}
                       className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
                     >
                       {productSlug ? (
-                        <Link
-                          href={productHref}
-                          onClick={() =>
-                            console.log("SHOWROOM NAVIGATE:", { href: productHref, product })
-                          }
-                        >
+                        <Link href={productHref}>
                           <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
                             {product.images?.[0] ? (
                               <img
@@ -285,19 +273,14 @@ export default function ShowroomPage() {
                       )}
                       <div className="p-6 flex flex-col flex-grow">
                         {productSlug ? (
-                          <Link
-                            href={productHref}
-                            onClick={() =>
-                              console.log("SHOWROOM NAVIGATE:", { href: productHref, product })
-                            }
-                          >
+                          <Link href={productHref}>
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
                           </Link>
                         ) : (
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
                         )}
                       <p className="text-sm text-gray-500 line-clamp-3 mb-4">
-                        {product.shortDescription || product.description}
+                        {stripHtml(product.shortDescription || product.description || "")}
                       </p>
                       <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full mb-4 inline-block">
                         MOQ {product.minimumOrderQuantity}
