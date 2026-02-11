@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="tr">
-      <body className="h-screen overflow-hidden bg-background">
+      <body className="bg-background min-h-screen">
         <AuthProvider>
           <ProtectedLayout>
             {children}

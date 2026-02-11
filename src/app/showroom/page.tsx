@@ -172,7 +172,7 @@ export default function ShowroomPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
@@ -187,26 +187,26 @@ export default function ShowroomPage() {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
           <div>
             {loading ? (
               <div className="text-sm text-gray-500">Loading products...</div>
             ) : products.length === 0 ? (
               <div className="text-sm text-gray-500">No products available yet.</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {products.map((product) => (
                   <Link
                     key={product.id}
                     href={`/showroom/${product.slug}`}
-                    className="text-left rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all p-5 group"
+                    className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-5 flex flex-col"
                   >
-                    <div className="aspect-[4/3] rounded-xl bg-gray-50 border border-gray-100 overflow-hidden">
+                    <div className="w-full h-64 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden mb-4">
                       {product.images?.[0] ? (
                         <img
                           src={product.images[0]}
                           alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="object-contain h-full w-full p-6"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
@@ -214,15 +214,15 @@ export default function ShowroomPage() {
                         </div>
                       )}
                     </div>
-                    <div className="mt-4">
-                      <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {product.shortDescription || product.description}
-                      </p>
-                      <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
-                        <span>{product.category || "General"}</span>
-                        <span>MOQ {product.minimumOrderQuantity}</span>
-                      </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                    <p className="text-sm text-gray-500 line-clamp-3 mb-3">
+                      {product.shortDescription || product.description}
+                    </p>
+                    <div className="mt-auto flex items-center justify-between text-xs text-gray-400">
+                      <span>{product.category || "General"}</span>
+                      <span className="text-xs font-medium bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                        MOQ {product.minimumOrderQuantity}
+                      </span>
                     </div>
                   </Link>
                 ))}
@@ -230,93 +230,107 @@ export default function ShowroomPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 h-fit">
-            <h2 className="text-lg font-semibold text-gray-900">Quote Basket</h2>
-            <p className="text-xs text-gray-400 mt-1">Minimum order is enforced per product.</p>
+          <div className="lg:sticky lg:top-24 h-fit">
+            <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Quote Basket</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Minimum order is enforced per product.
+                </p>
+              </div>
 
-            <div className="mt-4 space-y-3">
-              {basket.length === 0 ? (
-                <div className="text-sm text-gray-500">Add products to request a quote.</div>
-              ) : (
-                basket.map((item) => {
-                  const product = products.find((prod) => prod.id === item.productId)
-                  return (
-                    <div
-                      key={item.productId}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {product?.name || item.productId}
+              <div className="space-y-3">
+                {basket.length === 0 ? (
+                  <div className="text-sm text-gray-500">Add products to request a quote.</div>
+                ) : (
+                  basket.map((item) => {
+                    const product = products.find((prod) => prod.id === item.productId)
+                    return (
+                      <div
+                        key={item.productId}
+                        className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              {product?.name || item.productId}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              MOQ {product?.minimumOrderQuantity}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-400">MOQ {product?.minimumOrderQuantity}</div>
+                          <button
+                            type="button"
+                            onClick={() => removeFromBasket(item.productId)}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            ×
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFromBasket(item.productId)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          ×
-                        </button>
+                        <div className="mt-2">
+                          <input
+                            type="number"
+                            min={product?.minimumOrderQuantity || 100}
+                            value={item.quantity}
+                            onChange={(e) =>
+                              product && updateBasketItem(product, Number(e.target.value) || 0)
+                            }
+                            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                          />
+                        </div>
                       </div>
-                      <div className="mt-2">
-                        <input
-                          type="number"
-                          min={product?.minimumOrderQuantity || 100}
-                          value={item.quantity}
-                          onChange={(e) =>
-                            product && updateBasketItem(product, Number(e.target.value) || 0)
-                          }
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-gray-900">Container Simulation</h3>
-              <div className="mt-4 text-xs text-gray-500">
-                Total cartons: <span className="font-semibold text-gray-900">{containerSummary.totalCartons.toFixed(2)}</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Total pallets: <span className="font-semibold text-gray-900">{containerSummary.totalPallets.toFixed(2)}</span>
+                    )
+                  })
+                )}
               </div>
 
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>20ft Container</span>
-                  <span>{Math.round(containerSummary.fill20)}% Full</span>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Container Simulation</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Total cartons:{" "}
+                    <span className="font-semibold text-gray-900">
+                      {containerSummary.totalCartons.toFixed(2)}
+                    </span>
+                    {" · "}
+                    Total pallets:{" "}
+                    <span className="font-semibold text-gray-900">
+                      {containerSummary.totalPallets.toFixed(2)}
+                    </span>
+                  </p>
                 </div>
-                <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary/70 transition-all duration-500"
-                    style={{ width: `${containerSummary.fill20}%` }}
-                  />
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>20ft Container</span>
+                    <span>{Math.round(containerSummary.fill20)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${containerSummary.fill20}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Remaining Capacity: {Math.round(containerSummary.remaining20)}%
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-gray-400">
-                  Remaining Capacity: {Math.round(containerSummary.remaining20)}%
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>40ft Container</span>
+                    <span>{Math.round(containerSummary.fill40)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600/80 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${containerSummary.fill40}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>40ft Container</span>
-                  <span>{Math.round(containerSummary.fill40)}% Full</span>
-                </div>
-                <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary/40 transition-all duration-500"
-                    style={{ width: `${containerSummary.fill40}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
+              <div className="space-y-3">
               <input
                 value={quoteForm.companyName}
                 onChange={(e) => setQuoteForm((prev) => ({ ...prev, companyName: e.target.value }))}
@@ -348,26 +362,27 @@ export default function ShowroomPage() {
                 placeholder="Country"
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
               />
-            </div>
-
-            {message && (
-              <div
-                className={`mt-4 text-xs font-medium ${
-                  message.type === "success" ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {message.text}
               </div>
-            )}
 
-            <button
-              type="button"
-              onClick={handleSubmitQuote}
-              disabled={submitting}
-              className="mt-5 w-full px-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all disabled:opacity-50"
-            >
-              {submitting ? "Submitting..." : "Submit Quote"}
-            </button>
+              {message && (
+                <div
+                  className={`text-xs font-medium ${
+                    message.type === "success" ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {message.text}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSubmitQuote}
+                disabled={submitting}
+                className="w-full px-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {submitting ? "Submitting..." : "Submit Quote"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
