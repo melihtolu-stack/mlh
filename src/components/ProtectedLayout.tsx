@@ -5,13 +5,16 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import BottomNav from './BottomNav'
 
+const PUBLIC_ROUTES = ['/login', '/showroom']
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    const isPublic = PUBLIC_ROUTES.some((route) => pathname === route || pathname?.startsWith(`${route}/`))
+    if (!loading && !user && !isPublic) {
       router.push('/login')
     }
   }, [user, loading, router, pathname])
@@ -29,12 +32,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   // If not logged in and not on login page, don't render anything (will redirect)
-  if (!user && pathname !== '/login') {
+  const isPublic = PUBLIC_ROUTES.some((route) => pathname === route || pathname?.startsWith(`${route}/`))
+
+  if (!user && !isPublic) {
     return null
   }
 
-  // If on login page, render without sidebar/bottomnav
-  if (pathname === '/login') {
+  // If on public pages, render without auth chrome
+  if (isPublic) {
     return <>{children}</>
   }
 
