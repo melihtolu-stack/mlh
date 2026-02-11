@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import type { Product, QuoteItem } from "@/types/products"
 
@@ -19,17 +20,41 @@ const emptyQuoteForm: QuoteFormState = {
   country: "",
 }
 
+const BASKET_STORAGE_KEY = "showroom_quote_basket"
+
 export default function ShowroomPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [modalQuantity, setModalQuantity] = useState(0)
   const [basket, setBasket] = useState<QuoteItem[]>([])
   const [quoteForm, setQuoteForm] = useState<QuoteFormState>(emptyQuoteForm)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   )
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const stored = window.localStorage.getItem(BASKET_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          setBasket(parsed)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to parse basket storage:", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(BASKET_STORAGE_KEY, JSON.stringify(basket))
+    } catch (err) {
+      console.error("Failed to save basket storage:", err)
+    }
+  }, [basket])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -46,11 +71,6 @@ export default function ShowroomPage() {
     }
     fetchProducts()
   }, [])
-
-  useEffect(() => {
-    if (!selectedProduct) return
-    setModalQuantity(selectedProduct.minimumOrderQuantity || 100)
-  }, [selectedProduct])
 
   const basketCount = useMemo(
     () => basket.reduce((total, item) => total + item.quantity, 0),
@@ -96,6 +116,9 @@ export default function ShowroomPage() {
       }
       setMessage({ type: "success", text: "Quote request sent successfully." })
       setBasket([])
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(BASKET_STORAGE_KEY)
+      }
       setQuoteForm(emptyQuoteForm)
     } catch (err: any) {
       console.error(err)
@@ -130,9 +153,9 @@ export default function ShowroomPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {products.map((product) => (
-                  <button
+                  <Link
                     key={product.id}
-                    onClick={() => setSelectedProduct(product)}
+                    href={`/showroom/${product.slug}`}
                     className="text-left rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all p-5 group"
                   >
                     <div className="aspect-[4/3] rounded-xl bg-gray-50 border border-gray-100 overflow-hidden">
@@ -158,7 +181,7 @@ export default function ShowroomPage() {
                         <span>MOQ {product.minimumOrderQuantity}</span>
                       </div>
                     </div>
-                  </button>
+                  </Link>
                 ))}
               </div>
             )}
@@ -267,119 +290,6 @@ export default function ShowroomPage() {
         </div>
       </div>
 
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">{selectedProduct.name}</h2>
-                <p className="text-sm text-gray-500">{selectedProduct.category || "General"}</p>
-              </div>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ×
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-6 px-6 py-6">
-              <div className="space-y-4">
-                <div className="aspect-[4/3] rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden">
-                  {selectedProduct.images?.[0] ? (
-                    <img
-                      src={selectedProduct.images[0]}
-                      alt={selectedProduct.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
-                      No image
-                    </div>
-                  )}
-                </div>
-                {selectedProduct.images?.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2">
-                    {selectedProduct.images.slice(1, 5).map((image, index) => (
-                      <img
-                        key={`${image}-${index}`}
-                        src={image}
-                        alt="Thumbnail"
-                        className="h-16 w-full object-cover rounded-xl border border-gray-100"
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="text-sm text-gray-600">{selectedProduct.description}</p>
-              </div>
-              <div className="space-y-4">
-                <div className="rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Size</span>
-                    <span className="font-semibold">{selectedProduct.size || "-"}</span>
-                  </div>
-                  <div className="flex justify-between mt-2">
-                    <span>MOQ</span>
-                    <span className="font-semibold">{selectedProduct.minimumOrderQuantity}</span>
-                  </div>
-                </div>
-
-                {selectedProduct.variants?.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Variants</h3>
-                    <div className="mt-2 space-y-2">
-                      {selectedProduct.variants.map((variant, index) => (
-                        <div
-                          key={`${variant.name}-${index}`}
-                          className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600"
-                        >
-                          {variant.name || "Variant"} · {variant.color || "Color"} · {variant.scent || "Scent"}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedProduct.certificates?.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Certificates</h3>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedProduct.certificates.map((cert) => (
-                        <span
-                          key={cert}
-                          className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-600"
-                        >
-                          {cert}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Quantity</label>
-                  <input
-                    type="number"
-                    min={selectedProduct.minimumOrderQuantity || 100}
-                    value={modalQuantity}
-                    onChange={(e) => setModalQuantity(Number(e.target.value) || 0)}
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateBasketItem(selectedProduct, modalQuantity)
-                    setSelectedProduct(null)
-                  }}
-                  className="w-full px-4 py-3 rounded-xl bg-primary text-white text-sm font-semibold shadow-sm hover:opacity-90 transition-all"
-                >
-                  Add to Quote Basket
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
