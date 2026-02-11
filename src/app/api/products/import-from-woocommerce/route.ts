@@ -10,13 +10,6 @@ const DEFAULTS = {
   palletsPer40ft: 20,
 }
 
-const toSlug = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-
 const normalizeVariants = (attributes: any[] | null | undefined) => {
   if (!Array.isArray(attributes)) return []
   const variants: { name: string; color: string; scent: string }[] = []
@@ -85,9 +78,7 @@ export async function POST() {
 
     const payload = products.map((item) => ({
       name: typeof item.name === "string" ? item.name.trim() : "Untitled",
-      slug: typeof item.slug === "string" && item.slug.trim()
-        ? toSlug(item.slug)
-        : toSlug(typeof item.name === "string" ? item.name : "product"),
+      slug: typeof item.slug === "string" ? item.slug.trim() : "",
       category:
         Array.isArray(item.categories) && item.categories[0]?.name
           ? String(item.categories[0].name)

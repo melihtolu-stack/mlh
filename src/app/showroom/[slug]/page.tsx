@@ -1,6 +1,5 @@
 import Link from "next/link"
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
 import { createServerClient } from "@/lib/supabase"
 import type { Product } from "@/types/products"
 import ProductDetailClient from "@/components/showroom/ProductDetailClient"
@@ -33,19 +32,14 @@ const mapProduct = (item: any): Product => ({
   createdAt: item.created_at,
 })
 
-const getProductBySlug = async (slug: string) => {
-  const supabase = createServerClient()
-  const { data, error } = await supabase.from("products").select("*").eq("slug", slug).single()
-  if (error || !data) return null
-  return mapProduct(data)
-}
-
 export async function generateMetadata({
   params,
 }: {
   params: { slug: string }
 }): Promise<Metadata> {
-  const product = await getProductBySlug(params.slug)
+  const supabase = createServerClient()
+  const { data } = await supabase.from("products").select("*").eq("slug", params.slug).single()
+  const product = data ? mapProduct(data) : null
   if (!product) {
     return {
       title: "Product not found",
@@ -69,13 +63,21 @@ export async function generateMetadata({
 }
 
 export default async function ShowroomProductPage({ params }: { params: { slug: string } }) {
-  if (process.env.NODE_ENV !== "production") {
-    console.log("showroom slug:", params.slug)
+  console.log("URL SLUG:", params.slug)
+  const supabase = createServerClient()
+  const { data, error } = await supabase.from("products").select("*").eq("slug", params.slug).single()
+  console.log("DB RESULT:", data)
+  console.log("DB ERROR:", error)
+
+  if (!data) {
+    return (
+      <pre className="whitespace-pre-wrap break-words bg-white p-6 text-xs text-gray-700">
+        {JSON.stringify({ slug: params.slug, data, error }, null, 2)}
+      </pre>
+    )
   }
-  const product = await getProductBySlug(params.slug)
-  if (!product) {
-    notFound()
-  }
+
+  const product = mapProduct(data)
 
   return (
     <div className="min-h-screen bg-gray-50">
