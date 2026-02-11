@@ -63,16 +63,22 @@ export async function generateMetadata({
 }
 
 export default async function ShowroomProductPage({ params }: { params: { slug: string } }) {
-  console.log("URL SLUG:", params.slug)
+  const rawSlug = decodeURIComponent(params.slug).trim()
+  console.log("URL SLUG:", rawSlug)
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("products").select("*").eq("slug", params.slug).single()
+  let { data, error } = await supabase.from("products").select("*").eq("slug", rawSlug).single()
+  if (!data) {
+    const fallback = await supabase.from("products").select("*").ilike("slug", rawSlug).single()
+    data = fallback.data
+    error = fallback.error
+  }
   console.log("DB RESULT:", data)
   console.log("DB ERROR:", error)
 
   if (!data) {
     return (
       <pre className="whitespace-pre-wrap break-words bg-white p-6 text-xs text-gray-700">
-        {JSON.stringify({ slug: params.slug, data, error }, null, 2)}
+        {JSON.stringify({ slug: rawSlug, data, error }, null, 2)}
       </pre>
     )
   }
