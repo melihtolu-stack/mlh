@@ -5,7 +5,7 @@ import { createServerClient } from "@/lib/supabase"
 import type { Product } from "@/types/products"
 import ProductDetailClient from "@/components/showroom/ProductDetailClient"
 
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 const mapProduct = (item: any): Product => ({
   id: item.id,
@@ -40,16 +40,6 @@ const getProductBySlug = async (slug: string) => {
   return mapProduct(data)
 }
 
-export async function generateStaticParams() {
-  try {
-    const supabase = createServerClient()
-    const { data } = await supabase.from("products").select("slug")
-    return (data || []).filter((item) => item.slug).map((item) => ({ slug: item.slug }))
-  } catch {
-    return []
-  }
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -79,6 +69,9 @@ export async function generateMetadata({
 }
 
 export default async function ShowroomProductPage({ params }: { params: { slug: string } }) {
+  if (process.env.NODE_ENV !== "production") {
+    console.log("showroom slug:", params.slug)
+  }
   const product = await getProductBySlug(params.slug)
   if (!product) {
     notFound()
