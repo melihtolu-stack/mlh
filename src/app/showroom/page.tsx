@@ -68,7 +68,12 @@ export default function ShowroomPage() {
         const res = await fetch("/api/products", { cache: "no-store" })
         if (!res.ok) throw new Error("Failed to load products")
         const data = await res.json()
-        setProducts(Array.isArray(data) ? data : [])
+        const list = Array.isArray(data) ? data : []
+        console.log(
+          "SHOWROOM PRODUCTS:",
+          list.map((item: Product) => ({ id: item.id, name: item.name, slug: item.slug }))
+        )
+        setProducts(list)
       } catch (err) {
         console.error(err)
       } finally {
@@ -231,6 +236,7 @@ export default function ShowroomPage() {
                     typeof product.slug === "string" && product.slug.trim()
                       ? product.slug.trim()
                       : toSlug(product.name || "")
+                  const productHref = productSlug ? `/showroom/${productSlug}` : ""
 
                   if (!productSlug) {
                     console.warn("Missing product slug:", product)
@@ -242,7 +248,12 @@ export default function ShowroomPage() {
                       className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
                     >
                       {productSlug ? (
-                        <Link href={`/showroom/${productSlug}`}>
+                        <Link
+                          href={productHref}
+                          onClick={() =>
+                            console.log("SHOWROOM NAVIGATE:", { href: productHref, product })
+                          }
+                        >
                           <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
                             {product.images?.[0] ? (
                               <img
@@ -274,7 +285,12 @@ export default function ShowroomPage() {
                       )}
                       <div className="p-6 flex flex-col flex-grow">
                         {productSlug ? (
-                          <Link href={`/showroom/${productSlug}`}>
+                          <Link
+                            href={productHref}
+                            onClick={() =>
+                              console.log("SHOWROOM NAVIGATE:", { href: productHref, product })
+                            }
+                          >
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
                           </Link>
                         ) : (
