@@ -21,6 +21,12 @@ const emptyQuoteForm: QuoteFormState = {
 }
 
 const BASKET_STORAGE_KEY = "showroom_quote_basket"
+const toSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
 
 export default function ShowroomPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -221,7 +227,10 @@ export default function ShowroomPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10">
                 {products.map((product) => {
-                  const productSlug = typeof product.slug === "string" ? product.slug.trim() : ""
+                  const productSlug =
+                    typeof product.slug === "string" && product.slug.trim()
+                      ? product.slug.trim()
+                      : toSlug(product.name || "")
 
                   if (!productSlug) {
                     console.warn("Missing product slug:", product)
