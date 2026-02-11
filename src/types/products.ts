@@ -13,6 +13,10 @@ export interface Product {
   shortDescription: string
   size: string
   minimumOrderQuantity: number
+  unitsPerCarton: number
+  cartonsPerPallet: number
+  palletsPer20ft: number
+  palletsPer40ft: number
   images: string[]
   variants: ProductVariant[]
   certificates: string[]

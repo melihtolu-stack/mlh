@@ -49,6 +49,10 @@ export async function GET() {
       shortDescription: item.short_description || "",
       size: item.size || "",
       minimumOrderQuantity: item.minimum_order_quantity ?? 100,
+      unitsPerCarton: item.units_per_carton ?? 0,
+      cartonsPerPallet: item.cartons_per_pallet ?? 0,
+      palletsPer20ft: item.pallets_per_20ft ?? 0,
+      palletsPer40ft: item.pallets_per_40ft ?? 0,
       images: Array.isArray(item.images) ? item.images : [],
       variants: Array.isArray(item.variants) ? item.variants : [],
       certificates: Array.isArray(item.certificates) ? item.certificates : [],
@@ -81,6 +85,10 @@ export async function POST(request: Request) {
     const slug = slugInput || toSlug(name)
 
     const minimumOrderQuantity = Number(body.minimumOrderQuantity) || 100
+    const unitsPerCarton = Number(body.unitsPerCarton) || 0
+    const cartonsPerPallet = Number(body.cartonsPerPallet) || 0
+    const palletsPer20ft = Number(body.palletsPer20ft) || 0
+    const palletsPer40ft = Number(body.palletsPer40ft) || 0
     const payload = {
       name,
       slug,
@@ -89,6 +97,10 @@ export async function POST(request: Request) {
       short_description: typeof body.shortDescription === "string" ? body.shortDescription.trim() : null,
       size: typeof body.size === "string" ? body.size.trim() : null,
       minimum_order_quantity: minimumOrderQuantity < 1 ? 100 : minimumOrderQuantity,
+      units_per_carton: unitsPerCarton < 0 ? 0 : unitsPerCarton,
+      cartons_per_pallet: cartonsPerPallet < 0 ? 0 : cartonsPerPallet,
+      pallets_per_20ft: palletsPer20ft < 0 ? 0 : palletsPer20ft,
+      pallets_per_40ft: palletsPer40ft < 0 ? 0 : palletsPer40ft,
       images: normalizeStringArray(body.images),
       variants: normalizeVariants(body.variants),
       certificates: normalizeStringArray(body.certificates),
@@ -117,6 +129,10 @@ export async function POST(request: Request) {
       shortDescription: data.short_description || "",
       size: data.size || "",
       minimumOrderQuantity: data.minimum_order_quantity ?? 100,
+      unitsPerCarton: data.units_per_carton ?? 0,
+      cartonsPerPallet: data.cartons_per_pallet ?? 0,
+      palletsPer20ft: data.pallets_per_20ft ?? 0,
+      palletsPer40ft: data.pallets_per_40ft ?? 0,
       images: Array.isArray(data.images) ? data.images : [],
       variants: Array.isArray(data.variants) ? data.variants : [],
       certificates: Array.isArray(data.certificates) ? data.certificates : [],

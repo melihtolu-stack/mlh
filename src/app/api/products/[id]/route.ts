@@ -43,6 +43,10 @@ export async function GET(
       shortDescription: data.short_description || "",
       size: data.size || "",
       minimumOrderQuantity: data.minimum_order_quantity ?? 100,
+      unitsPerCarton: data.units_per_carton ?? 0,
+      cartonsPerPallet: data.cartons_per_pallet ?? 0,
+      palletsPer20ft: data.pallets_per_20ft ?? 0,
+      palletsPer40ft: data.pallets_per_40ft ?? 0,
       images: Array.isArray(data.images) ? data.images : [],
       variants: Array.isArray(data.variants) ? data.variants : [],
       certificates: Array.isArray(data.certificates) ? data.certificates : [],
@@ -80,6 +84,22 @@ export async function PUT(
         typeof body.minimumOrderQuantity === "number" || typeof body.minimumOrderQuantity === "string"
           ? Math.max(1, Number(body.minimumOrderQuantity) || 100)
           : 100,
+      units_per_carton:
+        typeof body.unitsPerCarton === "number" || typeof body.unitsPerCarton === "string"
+          ? Math.max(0, Number(body.unitsPerCarton) || 0)
+          : 0,
+      cartons_per_pallet:
+        typeof body.cartonsPerPallet === "number" || typeof body.cartonsPerPallet === "string"
+          ? Math.max(0, Number(body.cartonsPerPallet) || 0)
+          : 0,
+      pallets_per_20ft:
+        typeof body.palletsPer20ft === "number" || typeof body.palletsPer20ft === "string"
+          ? Math.max(0, Number(body.palletsPer20ft) || 0)
+          : 0,
+      pallets_per_40ft:
+        typeof body.palletsPer40ft === "number" || typeof body.palletsPer40ft === "string"
+          ? Math.max(0, Number(body.palletsPer40ft) || 0)
+          : 0,
       images: normalizeStringArray(body.images),
       variants: normalizeVariants(body.variants),
       certificates: normalizeStringArray(body.certificates),
@@ -113,6 +133,10 @@ export async function PUT(
       shortDescription: data.short_description || "",
       size: data.size || "",
       minimumOrderQuantity: data.minimum_order_quantity ?? 100,
+      unitsPerCarton: data.units_per_carton ?? 0,
+      cartonsPerPallet: data.cartons_per_pallet ?? 0,
+      palletsPer20ft: data.pallets_per_20ft ?? 0,
+      palletsPer40ft: data.pallets_per_40ft ?? 0,
       images: Array.isArray(data.images) ? data.images : [],
       variants: Array.isArray(data.variants) ? data.variants : [],
       certificates: Array.isArray(data.certificates) ? data.certificates : [],

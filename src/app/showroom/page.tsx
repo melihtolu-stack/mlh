@@ -77,6 +77,49 @@ export default function ShowroomPage() {
     [basket]
   )
 
+  const containerSummary = useMemo(() => {
+    let totalCartons = 0
+    let totalPallets = 0
+    const capacity20List: number[] = []
+    const capacity40List: number[] = []
+
+    basket.forEach((item) => {
+      const product = products.find((prod) => prod.id === item.productId)
+      if (!product) return
+
+      const unitsPerCarton = Number(product.unitsPerCarton) || 0
+      const cartonsPerPallet = Number(product.cartonsPerPallet) || 0
+      const palletsPer20ft = Number(product.palletsPer20ft) || 0
+      const palletsPer40ft = Number(product.palletsPer40ft) || 0
+
+      if (palletsPer20ft > 0) capacity20List.push(palletsPer20ft)
+      if (palletsPer40ft > 0) capacity40List.push(palletsPer40ft)
+
+      const cartons = unitsPerCarton > 0 ? item.quantity / unitsPerCarton : 0
+      const pallets = cartonsPerPallet > 0 ? cartons / cartonsPerPallet : 0
+
+      totalCartons += cartons
+      totalPallets += pallets
+    })
+
+    const capacity20ft = capacity20List.length ? Math.min(...capacity20List) : 0
+    const capacity40ft = capacity40List.length ? Math.min(...capacity40List) : 0
+
+    const fill20 = capacity20ft ? Math.min(100, (totalPallets / capacity20ft) * 100) : 0
+    const fill40 = capacity40ft ? Math.min(100, (totalPallets / capacity40ft) * 100) : 0
+
+    return {
+      totalCartons,
+      totalPallets,
+      capacity20ft,
+      capacity40ft,
+      fill20,
+      fill40,
+      remaining20: capacity20ft ? Math.max(0, 100 - fill20) : 0,
+      remaining40: capacity40ft ? Math.max(0, 100 - fill40) : 0,
+    }
+  }, [basket, products])
+
   const updateBasketItem = (product: Product, quantity: number) => {
     const safeQuantity = Math.max(product.minimumOrderQuantity || 100, quantity)
     setBasket((prev) => {
@@ -232,6 +275,45 @@ export default function ShowroomPage() {
                   )
                 })
               )}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+              <h3 className="text-sm font-semibold text-gray-900">Container Simulation</h3>
+              <div className="mt-4 text-xs text-gray-500">
+                Total cartons: <span className="font-semibold text-gray-900">{containerSummary.totalCartons.toFixed(2)}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Total pallets: <span className="font-semibold text-gray-900">{containerSummary.totalPallets.toFixed(2)}</span>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>20ft Container</span>
+                  <span>{Math.round(containerSummary.fill20)}% Full</span>
+                </div>
+                <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary/70 transition-all duration-500"
+                    style={{ width: `${containerSummary.fill20}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-xs text-gray-400">
+                  Remaining Capacity: {Math.round(containerSummary.remaining20)}%
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>40ft Container</span>
+                  <span>{Math.round(containerSummary.fill40)}% Full</span>
+                </div>
+                <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary/40 transition-all duration-500"
+                    style={{ width: `${containerSummary.fill40}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 space-y-3">

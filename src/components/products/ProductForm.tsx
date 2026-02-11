@@ -19,6 +19,10 @@ interface ProductFormState {
   shortDescription: string
   size: string
   minimumOrderQuantity: number
+  unitsPerCarton: number
+  cartonsPerPallet: number
+  palletsPer20ft: number
+  palletsPer40ft: number
   images: string[]
   variants: ProductVariant[]
   certificates: string[]
@@ -39,6 +43,10 @@ const emptyForm: ProductFormState = {
   shortDescription: "",
   size: "",
   minimumOrderQuantity: 100,
+  unitsPerCarton: 0,
+  cartonsPerPallet: 0,
+  palletsPer20ft: 0,
+  palletsPer40ft: 0,
   images: [],
   variants: [],
   certificates: [],
@@ -86,6 +94,10 @@ export default function ProductForm({ mode, productId }: ProductFormProps) {
           shortDescription: data.shortDescription || "",
           size: data.size || "",
           minimumOrderQuantity: data.minimumOrderQuantity || 100,
+          unitsPerCarton: data.unitsPerCarton || 0,
+          cartonsPerPallet: data.cartonsPerPallet || 0,
+          palletsPer20ft: data.palletsPer20ft || 0,
+          palletsPer40ft: data.palletsPer40ft || 0,
           images: data.images || [],
           variants: data.variants || [],
           certificates: data.certificates || [],
@@ -258,6 +270,49 @@ export default function ProductForm({ mode, productId }: ProductFormProps) {
             onChange={(e) => updateField("minimumOrderQuantity", Number(e.target.value) || 100)}
             className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Units per carton</label>
+            <input
+              type="number"
+              min={0}
+              value={form.unitsPerCarton}
+              onChange={(e) => updateField("unitsPerCarton", Number(e.target.value) || 0)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Cartons per pallet</label>
+            <input
+              type="number"
+              min={0}
+              value={form.cartonsPerPallet}
+              onChange={(e) => updateField("cartonsPerPallet", Number(e.target.value) || 0)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Pallets per 20ft</label>
+            <input
+              type="number"
+              min={0}
+              value={form.palletsPer20ft}
+              onChange={(e) => updateField("palletsPer20ft", Number(e.target.value) || 0)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Pallets per 40ft</label>
+            <input
+              type="number"
+              min={0}
+              value={form.palletsPer40ft}
+              onChange={(e) => updateField("palletsPer40ft", Number(e.target.value) || 0)}
+              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
         </div>
       </div>
 
