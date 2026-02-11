@@ -31,7 +31,7 @@ export interface QuoteItem {
   quantity: number
 }
 
-export type QuoteStatus = "new" | "contacted" | "quoted" | "closed"
+export type QuoteStatus = "new" | "contacted" | "quoted" | "production" | "closed"
 
 export interface Quote {
   id: string

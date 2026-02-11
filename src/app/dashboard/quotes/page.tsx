@@ -1,28 +1,24 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import type { Product, Quote } from "@/types/products"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import type { Quote, QuoteStatus } from "@/types/products"
 
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [quotesRes, productsRes] = await Promise.all([
-          fetch("/api/quotes", { cache: "no-store" }),
-          fetch("/api/products", { cache: "no-store" }),
-        ])
-        if (!quotesRes.ok || !productsRes.ok) {
+        const quotesRes = await fetch("/api/quotes", { cache: "no-store" })
+        if (!quotesRes.ok) {
           throw new Error("Failed to load data")
         }
-        const [quotesData, productsData] = await Promise.all([quotesRes.json(), productsRes.json()])
+        const quotesData = await quotesRes.json()
         setQuotes(Array.isArray(quotesData) ? quotesData : [])
-        setProducts(Array.isArray(productsData) ? productsData : [])
       } catch (err) {
         console.error(err)
         setError("Quotes could not be loaded.")
@@ -34,9 +30,35 @@ export default function QuotesPage() {
     loadData()
   }, [])
 
-  const productMap = useMemo(() => {
-    return new Map(products.map((product) => [product.id, product.name]))
-  }, [products])
+  const statusOptions: QuoteStatus[] = ["new", "contacted", "quoted", "production", "closed"]
+
+  const statusStyles: Record<QuoteStatus, string> = {
+    new: "bg-blue-50 text-blue-700 border border-blue-200",
+    contacted: "bg-amber-50 text-amber-700 border border-amber-200",
+    quoted: "bg-purple-50 text-purple-700 border border-purple-200",
+    production: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    closed: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  }
+
+  const handleStatusChange = async (quoteId: string, status: QuoteStatus) => {
+    setSavingId(quoteId)
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        throw new Error("Failed to update status")
+      }
+      setQuotes((prev) => prev.map((quote) => (quote.id === quoteId ? { ...quote, status } : quote)))
+    } catch (err) {
+      console.error(err)
+      setError("Status could not be updated.")
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto">
@@ -76,20 +98,38 @@ export default function QuotesPage() {
                       </td>
                       <td className="px-6 py-4 text-gray-600">{quote.items.length}</td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                          {quote.status}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[quote.status]}`}
+                          >
+                            {quote.status}
+                          </span>
+                          <select
+                            value={quote.status}
+                            onChange={(event) =>
+                              handleStatusChange(quote.id, event.target.value as QuoteStatus)
+                            }
+                            disabled={savingId === quote.id}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:opacity-50"
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-gray-600">
                         {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : "-"}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setSelectedQuote(quote)}
+                        <Link
+                          href={`/dashboard/quotes/${quote.id}`}
                           className="text-primary text-sm font-medium hover:underline"
                         >
                           View
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -98,55 +138,6 @@ export default function QuotesPage() {
             </div>
           )}
         </div>
-
-        {selectedQuote && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {selectedQuote.companyName}
-                  </h2>
-                  <p className="text-sm text-gray-500">{selectedQuote.contactName}</p>
-                </div>
-                <button
-                  onClick={() => setSelectedQuote(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="mt-4 space-y-2 text-sm text-gray-600">
-                <div>Email: {selectedQuote.email}</div>
-                <div>Phone: {selectedQuote.phone || "-"}</div>
-                <div>Country: {selectedQuote.country || "-"}</div>
-                <div>Status: {selectedQuote.status}</div>
-              </div>
-              <div className="mt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Requested items</h3>
-                <div className="space-y-2">
-                  {selectedQuote.items.map((item, index) => (
-                    <div
-                      key={`${item.productId}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700"
-                    >
-                      <span>{productMap.get(item.productId) || item.productId}</span>
-                      <span className="font-semibold">Qty {item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setSelectedQuote(null)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
