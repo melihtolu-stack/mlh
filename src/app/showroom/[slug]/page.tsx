@@ -1,6 +1,5 @@
 import Link from "next/link"
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase"
 import type { Product } from "@/types/products"
 import ProductDetailClient from "@/components/showroom/ProductDetailClient"
@@ -66,9 +65,6 @@ export async function generateMetadata({
 export default async function ShowroomProductPage({ params }: { params: { slug: string } }) {
   const rawSlug = decodeURIComponent(params.slug).trim()
   console.log("URL SLUG:", rawSlug)
-  if (!rawSlug || rawSlug === "undefined") {
-    redirect("/showroom")
-  }
   const supabase = createServerClient()
   let { data, error } = await supabase.from("products").select("*").eq("slug", rawSlug).single()
   if (!data) {
