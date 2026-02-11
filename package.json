@@ -9,11 +9,24 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.90.1",
+    "@tanstack/react-query": "^5.90.21",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
     "next": "^16.1.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-country-flag": "^3.1.0",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^15.0.0",
+    "react-hook-form": "^7.71.1",
+    "react-hot-toast": "^2.6.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

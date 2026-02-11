@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import lead_contacts, leads, health, test_supabase, emails, messages, whatsapp, qr_admin
+from routers import lead_contacts, leads, health, test_supabase, emails, messages, whatsapp, qr_admin, showroom
 
 import logging
 
@@ -43,3 +43,4 @@ app.include_router(emails.router)
 app.include_router(messages.router)
 app.include_router(whatsapp.router)
 app.include_router(qr_admin.router)
+app.include_router(showroom.router)

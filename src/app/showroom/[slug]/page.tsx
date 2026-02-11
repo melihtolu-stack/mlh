@@ -1,140 +1,113 @@
-import Link from "next/link"
-import type { Metadata } from "next"
-import { notFound } from "next/navigation"
-import { createServerClient } from "@/lib/supabase"
-import type { Product } from "@/types/products"
-import ProductDetailClient from "@/components/showroom/ProductDetailClient"
+'use client';
 
-export const dynamic = "force-dynamic"
-const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim()
+/**
+ * Ürün Detay Sayfası - Yeni tasarım
+ * Sol: Galeri, Sağ: Bilgiler, Alt: Tabs
+ */
 
-const mapProduct = (item: any): Product => ({
-  id: item.id,
-  name: item.name,
-  slug: item.slug,
-  category: item.category || "",
-  description: item.description || "",
-  shortDescription: item.short_description || "",
-  size: item.size || "",
-  minimumOrderQuantity: item.minimum_order_quantity ?? 100,
-  unitsPerCarton: item.units_per_carton ?? 0,
-  cartonsPerPallet: item.cartons_per_pallet ?? 0,
-  palletsPer20ft: item.pallets_per_20ft ?? 0,
-  palletsPer40ft: item.pallets_per_40ft ?? 0,
-  images: Array.isArray(item.images) ? item.images : [],
-  variants: Array.isArray(item.variants) ? item.variants : [],
-  certificates: Array.isArray(item.certificates) ? item.certificates : [],
-  exportInfo: item.export_info || "",
-  pdfUrl: item.pdf_url || "",
-  msdsUrl: item.msds_url || "",
-  videoUrl: item.video_url || "",
-  referenceCountries: Array.isArray(item.reference_countries) ? item.reference_countries : [],
-  seoTitle: item.seo_title || "",
-  seoDescription: item.seo_description || "",
-  createdAt: item.created_at,
-})
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { showroomAPI, Product } from '@/lib/api/showroom';
+import ProductGallery from '@/components/showroom/ProductGallery';
+import ProductInfo from '@/components/showroom/ProductInfo';
+import ProductTabs from '@/components/showroom/ProductTabs';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string }
-}): Promise<Metadata> {
-  const supabase = createServerClient()
-  const { data } = await supabase.from("products").select("*").eq("slug", params.slug).single()
-  const product = data ? mapProduct(data) : null
-  if (!product) {
-    return {
-      title: "Product not found",
-      description: "The requested product could not be found.",
+export default function ProductDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const slug = params.slug as string;
+  
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    loadProduct();
+  }, [slug]);
+  
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await showroomAPI.getProduct(slug);
+      setProduct(data);
+    } catch (err: any) {
+      console.error('Ürün yüklenemedi:', err);
+      setError(err.message || 'Ürün bulunamadı');
+    } finally {
+      setLoading(false);
     }
-  }
-
-  const title = product.seoTitle || product.name
-  const description = product.seoDescription || product.shortDescription || product.description
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      images: product.images?.[0] ? [{ url: product.images[0] }] : undefined,
-    },
-  }
-}
-
-export default async function ShowroomProductPage({
-  params,
-}: {
-  params: { slug: string } | Promise<{ slug: string }>
-}) {
-  const resolvedParams = await Promise.resolve(params)
-  const rawParam = typeof resolvedParams?.slug === "string" ? resolvedParams.slug : ""
-  const rawSlug = decodeURIComponent(rawParam).trim()
-  const supabase = createServerClient()
-  let { data, error } = await supabase.from("products").select("*").eq("slug", rawSlug).single()
-  if (!data) {
-    const fallback = await supabase.from("products").select("*").ilike("slug", rawSlug).single()
-    data = fallback.data
-    error = fallback.error
-  }
-  if (!data) {
-    notFound()
-  }
-
-  const product = mapProduct(data)
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 py-16 grid lg:grid-cols-2 gap-16">
-        <div className="space-y-6">
-          <Link href="/showroom" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Back to showroom
-          </Link>
-          <div className="w-full h-96 bg-white rounded-2xl shadow-sm flex items-center justify-center">
-            {product.images?.[0] ? (
-              <img
-                src={product.images[0]}
-                alt={product.name}
-                className="object-contain h-full w-full p-8"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
-                No image
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900">{product.name}</h1>
-            <p className="text-sm text-gray-500 mt-3">
-              {stripHtml(product.shortDescription || product.description || "")}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Product Details</h2>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {stripHtml(product.description || product.shortDescription || "")}
-            </p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Category</span>
-              <span className="font-semibold text-gray-900">{product.category || "-"}</span>
+  };
+  
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-8">
+          {/* Back button skeleton */}
+          <div className="h-10 w-32 bg-gray-200 rounded" />
+          
+          {/* Main content skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="aspect-square bg-gray-200 rounded-xl" />
+            <div className="space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-3/4" />
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+              <div className="h-20 bg-gray-200 rounded" />
+              <div className="h-12 bg-gray-200 rounded" />
             </div>
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Size</span>
-              <span className="font-semibold text-gray-900">{product.size || "-"}</span>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <ProductDetailClient product={product} />
           </div>
         </div>
       </div>
+    );
+  }
+  
+  if (error || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Ürün Bulunamadı
+          </h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link
+            href="/showroom"
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Ürünlere Dön</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Back Button */}
+      <Link
+        href="/showroom"
+        className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Ürünlere Dön</span>
+      </Link>
+      
+      {/* Main Content: Gallery + Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        {/* Sol: Galeri */}
+        <ProductGallery
+          media={product.media || []}
+          productName={product.name}
+        />
+        
+        {/* Sağ: Bilgiler */}
+        <ProductInfo product={product} />
+      </div>
+      
+      {/* Tabs */}
+      <ProductTabs product={product} />
     </div>
-  )
+  );
 }
