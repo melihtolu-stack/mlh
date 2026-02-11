@@ -171,9 +171,34 @@ export default function ShowroomPage() {
     }
   }
 
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
+
+  const getQuantity = (product: Product) =>
+    quantities[product.id] ?? (product.minimumOrderQuantity || 100)
+
+  const increaseQuantity = (product: Product) => {
+    const step = product.minimumOrderQuantity || 100
+    setQuantities((prev) => ({
+      ...prev,
+      [product.id]: getQuantity(product) + step,
+    }))
+  }
+
+  const decreaseQuantity = (product: Product) => {
+    const step = product.minimumOrderQuantity || 100
+    setQuantities((prev) => ({
+      ...prev,
+      [product.id]: Math.max(step, getQuantity(product) - step),
+    }))
+  }
+
+  const addToBasketFromCard = (product: Product) => {
+    updateBasketItem(product, getQuantity(product))
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold text-gray-900">B2B Showroom</h1>
@@ -187,44 +212,79 @@ export default function ShowroomPage() {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10">
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
           <div>
             {loading ? (
               <div className="text-sm text-gray-500">Loading products...</div>
             ) : products.length === 0 ? (
               <div className="text-sm text-gray-500">No products available yet.</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10">
                 {products.map((product) => (
-                  <Link
+                  <div
                     key={product.id}
-                    href={`/showroom/${product.slug}`}
-                    className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 p-5 flex flex-col"
+                    className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
                   >
-                    <div className="w-full h-64 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden mb-4">
-                      {product.images?.[0] ? (
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="object-contain h-full w-full p-6"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
-                    <p className="text-sm text-gray-500 line-clamp-3 mb-3">
-                      {product.shortDescription || product.description}
-                    </p>
-                    <div className="mt-auto flex items-center justify-between text-xs text-gray-400">
-                      <span>{product.category || "General"}</span>
-                      <span className="text-xs font-medium bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                    <Link href={`/showroom/${product.slug}`}>
+                      <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
+                        {product.images?.[0] ? (
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="object-contain h-full w-full p-8"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+                            No image
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                    <div className="p-6 flex flex-col flex-grow">
+                      <Link href={`/showroom/${product.slug}`}>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                      </Link>
+                      <p className="text-sm text-gray-500 line-clamp-3 mb-4">
+                        {product.shortDescription || product.description}
+                      </p>
+                      <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full mb-4 inline-block">
                         MOQ {product.minimumOrderQuantity}
                       </span>
+                      <div className="mt-auto space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">
+                            MOQ {product.minimumOrderQuantity}
+                          </span>
+                          <div className="flex items-center border border-gray-200 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => decreaseQuantity(product)}
+                              className="px-3 py-1 text-gray-600 hover:text-gray-900"
+                            >
+                              -
+                            </button>
+                            <span className="px-4 text-sm font-medium text-gray-900">
+                              {getQuantity(product)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => increaseQuantity(product)}
+                              className="px-3 py-1 text-gray-600 hover:text-gray-900"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addToBasketFromCard(product)}
+                          className="w-full bg-black text-white py-2 rounded-xl hover:opacity-90 transition"
+                        >
+                          Add to Quote Basket
+                        </button>
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -310,9 +370,6 @@ export default function ShowroomPage() {
                       className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${containerSummary.fill20}%` }}
                     />
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Remaining Capacity: {Math.round(containerSummary.remaining20)}%
                   </div>
                 </div>
 

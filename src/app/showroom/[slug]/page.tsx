@@ -1,3 +1,4 @@
+import Link from "next/link"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createServerClient } from "@/lib/supabase"
@@ -83,5 +84,56 @@ export default async function ShowroomProductPage({ params }: { params: { slug: 
     notFound()
   }
 
-  return <ProductDetailClient product={product} />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto px-6 py-16 grid lg:grid-cols-2 gap-16">
+        <div className="space-y-6">
+          <Link href="/showroom" className="text-sm text-gray-500 hover:text-gray-700">
+            ← Back to showroom
+          </Link>
+          <div className="w-full h-96 bg-white rounded-2xl shadow-sm flex items-center justify-center">
+            {product.images?.[0] ? (
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="object-contain h-full w-full p-8"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+                No image
+              </div>
+            )}
+          </div>
+          <div>
+            <h1 className="text-3xl font-semibold text-gray-900">{product.name}</h1>
+            <p className="text-sm text-gray-500 mt-3">
+              {product.shortDescription || product.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Product Details</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {product.description || product.shortDescription}
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Category</span>
+              <span className="font-semibold text-gray-900">{product.category || "-"}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>Size</span>
+              <span className="font-semibold text-gray-900">{product.size || "-"}</span>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <ProductDetailClient product={product} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
