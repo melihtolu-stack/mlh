@@ -175,13 +175,19 @@ async function connectToWhatsApp() {
           const attachments = [];
           const addAttachment = async (mediaMessage, fallbackType) => {
             if (!mediaMessage) return;
-            try {
-              const buffer = await downloadMediaMessage(
+            const tryDownload = async () => {
+              return await downloadMediaMessage(
                 messageForDownload,
                 'buffer',
                 {},
                 { logger, reuploadRequest: sock.updateMediaMessage }
               );
+            };
+            try {
+              let buffer = await tryDownload();
+              if (!buffer || buffer.length === 0) {
+                throw new Error('Empty media buffer');
+              }
               const mimetype = mediaMessage.mimetype || fallbackType || 'application/octet-stream';
               const extension = mimetype.includes('/') ? mimetype.split('/')[1] : 'bin';
               const fileName = mediaMessage.fileName || `whatsapp-${message.key.id}.${extension}`;
@@ -191,7 +197,24 @@ async function connectToWhatsApp() {
                 name: fileName
               });
             } catch (error) {
-              console.error('❌ Failed to download media:', error.message);
+              console.error('❌ Failed to download media (first attempt):', error.message);
+              try {
+                await sock.updateMediaMessage(messageForDownload);
+                const retryBuffer = await tryDownload();
+                if (!retryBuffer || retryBuffer.length === 0) {
+                  throw new Error('Empty media buffer after retry');
+                }
+                const mimetype = mediaMessage.mimetype || fallbackType || 'application/octet-stream';
+                const extension = mimetype.includes('/') ? mimetype.split('/')[1] : 'bin';
+                const fileName = mediaMessage.fileName || `whatsapp-${message.key.id}.${extension}`;
+                attachments.push({
+                  data: retryBuffer.toString('base64'),
+                  type: mimetype,
+                  name: fileName
+                });
+              } catch (retryError) {
+                console.error('❌ Failed to download media (retry):', retryError.message);
+              }
             }
           };
 
