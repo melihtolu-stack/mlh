@@ -62,8 +62,14 @@ export async function generateMetadata({
   }
 }
 
-export default async function ShowroomProductPage({ params }: { params: { slug: string } }) {
-  const rawSlug = decodeURIComponent(params.slug).trim()
+export default async function ShowroomProductPage({
+  params,
+}: {
+  params: { slug: string } | Promise<{ slug: string }>
+}) {
+  const resolvedParams = await Promise.resolve(params)
+  const rawParam = typeof resolvedParams?.slug === "string" ? resolvedParams.slug : ""
+  const rawSlug = decodeURIComponent(rawParam).trim()
   console.log("URL SLUG:", rawSlug)
   const supabase = createServerClient()
   let { data, error } = await supabase.from("products").select("*").eq("slug", rawSlug).single()
