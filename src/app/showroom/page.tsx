@@ -220,30 +220,39 @@ export default function ShowroomPage() {
               <div className="text-sm text-gray-500">No products available yet.</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10">
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
-                  >
-                    <Link href={`/showroom/${product.slug}`}>
-                      <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
-                        {product.images?.[0] ? (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="object-contain h-full w-full p-8"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
-                            No image
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                    <div className="p-6 flex flex-col flex-grow">
-                      <Link href={`/showroom/${product.slug}`}>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
-                      </Link>
+                {products.map((product) => {
+                  const productSlug = typeof product.slug === "string" ? product.slug.trim() : ""
+                  const CardLink = productSlug ? Link : "div"
+                  const cardHref = productSlug ? `/showroom/${productSlug}` : undefined
+
+                  if (!productSlug) {
+                    console.warn("Missing product slug:", product)
+                  }
+
+                  return (
+                    <div
+                      key={product.id}
+                      className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col"
+                    >
+                      <CardLink {...(cardHref ? { href: cardHref } : {})}>
+                        <div className="w-full h-72 bg-gray-100 flex items-center justify-center">
+                          {product.images?.[0] ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="object-contain h-full w-full p-8"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+                              No image
+                            </div>
+                          )}
+                        </div>
+                      </CardLink>
+                      <div className="p-6 flex flex-col flex-grow">
+                        <CardLink {...(cardHref ? { href: cardHref } : {})}>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                        </CardLink>
                       <p className="text-sm text-gray-500 line-clamp-3 mb-4">
                         {product.shortDescription || product.description}
                       </p>
@@ -283,9 +292,10 @@ export default function ShowroomPage() {
                           Add to Quote Basket
                         </button>
                       </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
