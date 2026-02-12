@@ -3,7 +3,10 @@ import { createServerClient } from "@/lib/supabase"
 
 const normalizeStringArray = (value: unknown) =>
   Array.isArray(value)
-    ? value.filter((item) => typeof item === "string").map((item) => item.trim()).filter(Boolean)
+    ? value
+        .filter((item) => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
     : []
 
 const normalizeVariants = (value: unknown) =>
@@ -21,98 +24,79 @@ const normalizeVariants = (value: unknown) =>
         .filter((item) => item && (item.name || item.color || item.scent))
     : []
 
+/* =========================
+   GET PRODUCT
+========================= */
+
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = context.params
     const supabase = createServerClient()
-    const { data, error } = await supabase.from("products").select("*").eq("id", id).single()
 
-    if (error) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (error || !data) {
+      console.error(error)
       return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 })
     }
 
-    return NextResponse.json({
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      category: data.category || "",
-      description: data.description || "",
-      shortDescription: data.short_description || "",
-      size: data.size || "",
-      minimumOrderQuantity: data.minimum_order_quantity ?? 100,
-      unitsPerCarton: data.units_per_carton ?? 0,
-      cartonsPerPallet: data.cartons_per_pallet ?? 0,
-      palletsPer20ft: data.pallets_per_20ft ?? 0,
-      palletsPer40ft: data.pallets_per_40ft ?? 0,
-      images: Array.isArray(data.images) ? data.images : [],
-      variants: Array.isArray(data.variants) ? data.variants : [],
-      certificates: Array.isArray(data.certificates) ? data.certificates : [],
-      exportInfo: data.export_info || "",
-      pdfUrl: data.pdf_url || "",
-      msdsUrl: data.msds_url || "",
-      videoUrl: data.video_url || "",
-      referenceCountries: Array.isArray(data.reference_countries) ? data.reference_countries : [],
-      seoTitle: data.seo_title || "",
-      seoDescription: data.seo_description || "",
-      createdAt: data.created_at,
-    })
+    return NextResponse.json(mapProduct(data))
   } catch (error) {
     console.error("Product GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
+/* =========================
+   UPDATE PRODUCT
+========================= */
+
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = context.params
     const body = await request.json()
 
     const payload = {
-      name: typeof body.name === "string" ? body.name.trim() : null,
-      slug: typeof body.slug === "string" ? body.slug.trim() : null,
-      category: typeof body.category === "string" ? body.category.trim() : null,
-      description: typeof body.description === "string" ? body.description.trim() : null,
-      short_description: typeof body.shortDescription === "string" ? body.shortDescription.trim() : null,
-      size: typeof body.size === "string" ? body.size.trim() : null,
-      minimum_order_quantity:
-        typeof body.minimumOrderQuantity === "number" || typeof body.minimumOrderQuantity === "string"
-          ? Math.max(1, Number(body.minimumOrderQuantity) || 100)
-          : 100,
-      units_per_carton:
-        typeof body.unitsPerCarton === "number" || typeof body.unitsPerCarton === "string"
-          ? Math.max(0, Number(body.unitsPerCarton) || 0)
-          : 0,
-      cartons_per_pallet:
-        typeof body.cartonsPerPallet === "number" || typeof body.cartonsPerPallet === "string"
-          ? Math.max(0, Number(body.cartonsPerPallet) || 0)
-          : 0,
-      pallets_per_20ft:
-        typeof body.palletsPer20ft === "number" || typeof body.palletsPer20ft === "string"
-          ? Math.max(0, Number(body.palletsPer20ft) || 0)
-          : 0,
-      pallets_per_40ft:
-        typeof body.palletsPer40ft === "number" || typeof body.palletsPer40ft === "string"
-          ? Math.max(0, Number(body.palletsPer40ft) || 0)
-          : 0,
+      name: body.name?.trim() || null,
+      slug: body.slug?.trim() || null,
+      category: body.category?.trim() || null,
+      description: body.description?.trim() || null,
+      short_description: body.shortDescription?.trim() || null,
+      size: body.size?.trim() || null,
+
+      minimum_order_quantity: Number(body.minimumOrderQuantity) || 100,
+      units_per_carton: Number(body.unitsPerCarton) || 0,
+      cartons_per_pallet: Number(body.cartonsPerPallet) || 0,
+      pallets_per_20ft: Number(body.palletsPer20ft) || 0,
+      pallets_per_40ft: Number(body.palletsPer40ft) || 0,
+
       images: normalizeStringArray(body.images),
       variants: normalizeVariants(body.variants),
       certificates: normalizeStringArray(body.certificates),
-      export_info: typeof body.exportInfo === "string" ? body.exportInfo.trim() : null,
-      pdf_url: typeof body.pdfUrl === "string" ? body.pdfUrl.trim() : null,
-      msds_url: typeof body.msdsUrl === "string" ? body.msdsUrl.trim() : null,
-      video_url: typeof body.videoUrl === "string" ? body.videoUrl.trim() : null,
+
+      export_info: body.exportInfo?.trim() || null,
+      pdf_url: body.pdfUrl?.trim() || null,
+      msds_url: body.msdsUrl?.trim() || null,
+      video_url: body.videoUrl?.trim() || null,
+
       reference_countries: normalizeStringArray(body.referenceCountries),
-      seo_title: typeof body.seoTitle === "string" ? body.seoTitle.trim() : null,
-      seo_description: typeof body.seoDescription === "string" ? body.seoDescription.trim() : null,
+
+      seo_title: body.seoTitle?.trim() || null,
+      seo_description: body.seoDescription?.trim() || null,
     }
 
     const supabase = createServerClient()
+
     const { data, error } = await supabase
       .from("products")
       .update(payload)
@@ -120,51 +104,37 @@ export async function PUT(
       .select("*")
       .single()
 
-    if (error) {
+    if (error || !data) {
+      console.error(error)
       return NextResponse.json({ error: "Failed to update product" }, { status: 500 })
     }
 
-    return NextResponse.json({
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      category: data.category || "",
-      description: data.description || "",
-      shortDescription: data.short_description || "",
-      size: data.size || "",
-      minimumOrderQuantity: data.minimum_order_quantity ?? 100,
-      unitsPerCarton: data.units_per_carton ?? 0,
-      cartonsPerPallet: data.cartons_per_pallet ?? 0,
-      palletsPer20ft: data.pallets_per_20ft ?? 0,
-      palletsPer40ft: data.pallets_per_40ft ?? 0,
-      images: Array.isArray(data.images) ? data.images : [],
-      variants: Array.isArray(data.variants) ? data.variants : [],
-      certificates: Array.isArray(data.certificates) ? data.certificates : [],
-      exportInfo: data.export_info || "",
-      pdfUrl: data.pdf_url || "",
-      msdsUrl: data.msds_url || "",
-      videoUrl: data.video_url || "",
-      referenceCountries: Array.isArray(data.reference_countries) ? data.reference_countries : [],
-      seoTitle: data.seo_title || "",
-      seoDescription: data.seo_description || "",
-      createdAt: data.created_at,
-    })
+    return NextResponse.json(mapProduct(data))
   } catch (error) {
     console.error("Product PUT error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
+/* =========================
+   DELETE PRODUCT
+========================= */
+
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = await params
+    const { id } = context.params
     const supabase = createServerClient()
-    const { error } = await supabase.from("products").delete().eq("id", id)
+
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id)
 
     if (error) {
+      console.error(error)
       return NextResponse.json({ error: "Failed to delete product" }, { status: 500 })
     }
 
@@ -172,5 +142,44 @@ export async function DELETE(
   } catch (error) {
     console.error("Product DELETE error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+/* =========================
+   RESPONSE MAPPER
+========================= */
+
+function mapProduct(data: any) {
+  return {
+    id: data.id,
+    name: data.name,
+    slug: data.slug,
+    category: data.category || "",
+    description: data.description || "",
+    shortDescription: data.short_description || "",
+    size: data.size || "",
+
+    minimumOrderQuantity: data.minimum_order_quantity ?? 100,
+    unitsPerCarton: data.units_per_carton ?? 0,
+    cartonsPerPallet: data.cartons_per_pallet ?? 0,
+    palletsPer20ft: data.pallets_per_20ft ?? 0,
+    palletsPer40ft: data.pallets_per_40ft ?? 0,
+
+    images: Array.isArray(data.images) ? data.images : [],
+    variants: Array.isArray(data.variants) ? data.variants : [],
+    certificates: Array.isArray(data.certificates) ? data.certificates : [],
+
+    exportInfo: data.export_info || "",
+    pdfUrl: data.pdf_url || "",
+    msdsUrl: data.msds_url || "",
+    videoUrl: data.video_url || "",
+
+    referenceCountries: Array.isArray(data.reference_countries)
+      ? data.reference_countries
+      : [],
+
+    seoTitle: data.seo_title || "",
+    seoDescription: data.seo_description || "",
+    createdAt: data.created_at,
   }
 }

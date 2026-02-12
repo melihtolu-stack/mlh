@@ -10,20 +10,11 @@ export interface Product {
   slug: string;
   sku?: string;
   short_description?: string;
-  description?: string;
   category?: string;
-  brand?: string;
-  is_active: boolean;
+  images?: string[];   // 👈 bunu ekle
   moq?: number;
-  image_url?: string;
-  technical_specs?: Record<string, any>;
-  features?: string[];
-  media?: ProductMedia[];
-  documents?: ProductDocument[];
-  export_countries?: ExportCountry[];
-  created_at?: string;
-  updated_at?: string;
 }
+
 
 export interface ProductMedia {
   id: string;

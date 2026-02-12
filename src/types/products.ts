@@ -60,6 +60,7 @@ export interface ProductCategory {
   parent_id?: string;
   name: string;
   slug: string;
+  category?: string
   description?: string;
   image_url?: string;
   sort_order: number;

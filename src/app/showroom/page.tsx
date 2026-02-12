@@ -35,11 +35,14 @@ export default function ShowroomPage() {
     }
   };
   
-  // Kategorileri çıkar (unique)
-  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+  // Unique kategoriler
+  const categories = Array.from(
+    new Set(products.map((p) => p.category).filter(Boolean))
+  );
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      
       {/* Hero Section */}
       <div className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
@@ -52,6 +55,7 @@ export default function ShowroomPage() {
       
       {/* Filters */}
       <div className="mb-8 flex flex-col sm:flex-row gap-4">
+        
         {/* Search */}
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -103,19 +107,27 @@ export default function ShowroomPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              id={product.id}
-              name={product.name}
-              slug={product.slug}
-              sku={product.sku}
-              short_description={product.short_description}
-              category={product.category}
-              image_url={product.image_url}
-              moq={product.moq}
-            />
-          ))}
+          {products.map((product) => {
+            const imageUrl =
+              Array.isArray((product as any).images) &&
+              (product as any).images.length > 0
+                ? (product as any).images[0]
+                : '';
+
+            return (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                slug={product.slug}
+                sku={product.sku}
+                short_description={product.short_description}
+                category={product.category}
+                image_url={imageUrl}
+                moq={product.moq}
+              />
+            );
+          })}
         </div>
       )}
     </div>
