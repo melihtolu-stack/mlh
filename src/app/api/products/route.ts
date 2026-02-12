@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createServerClient } from '@/lib/supabase'; // ✅ createClient değil!
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = createServerClient(); // ✅ createClient değil!
   const { searchParams } = new URL(request.url);
   
   const status = searchParams.get('status');
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = createServerClient(); // ✅ createClient değil!
   
   try {
     const body = await request.json();
