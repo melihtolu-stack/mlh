@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import type { Product } from "@/types/products"
 import { Search, Package, Plus, Download, RefreshCw } from "lucide-react"
 import Image from "next/image"
+import { getProductImage } from '@/types/products';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -196,61 +197,65 @@ export default function ProductsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all group"
-              >
-                {/* Product Image */}
-                <Link href={`/dashboard/products/${product.id}`}>
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                    {product.imageUrl ? (
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="w-16 h-16 text-gray-300" />
-                      </div>
-                    )}
-                  </div>
-                </Link>
-
-                {/* Product Info */}
-                <div className="p-4">
+            {filteredProducts.map((product) => {
+              const imageUrl = getProductImage(product);
+              
+              return (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all group"
+                >
+                  {/* Product Image */}
                   <Link href={`/dashboard/products/${product.id}`}>
-                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-                      {product.name}
-                    </h3>
+                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="w-16 h-16 text-gray-300" />
+                        </div>
+                      )}
+                    </div>
                   </Link>
-                  <p className="text-xs text-gray-500 mb-2">{product.category || "Kategorisiz"}</p>
-                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                    <span className="text-xs">MOQ: {product.minimumOrderQuantity || "N/A"}</span>
-                    <span className="text-xs text-gray-400">{product.sku || "SKU yok"}</span>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/dashboard/products/${product.id}`}
-                      className="flex-1 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-all text-center"
-                    >
-                      Düzenle
+                  {/* Product Info */}
+                  <div className="p-4">
+                    <Link href={`/dashboard/products/${product.id}`}>
+                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
                     </Link>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      disabled={deletingId === product.id}
-                      className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {deletingId === product.id ? "..." : "Sil"}
-                    </button>
+                    <p className="text-xs text-gray-500 mb-2">{product.category || "Kategorisiz"}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                      <span className="text-xs">MOQ: {product.minimumOrderQuantity || "N/A"}</span>
+                      <span className="text-xs text-gray-400">{product.sku || "SKU yok"}</span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/products/${product.id}`}
+                        className="flex-1 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-all text-center"
+                      >
+                        Düzenle
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        disabled={deletingId === product.id}
+                        className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {deletingId === product.id ? "..." : "Sil"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
