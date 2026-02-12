@@ -4,7 +4,9 @@ import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
-import { RefreshCw, Power } from "lucide-react"
+import { RefreshCw } from "lucide-react"
+import ModernHeader from "@/components/dashboard/ModernHeader"
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar"
 
 interface Customer {
   id: string
@@ -25,7 +27,7 @@ interface Conversation {
 }
 
 export default function HomePage() {
-  const { signOut } = useAuth()
+  const { } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -201,169 +203,159 @@ export default function HomePage() {
   })
 
   return (
-    <div className="h-full flex flex-col bg-white pb-16 overflow-hidden">
-      {/* Notification Toast */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
-          notification.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
-          <svg 
-            className={`w-5 h-5 ${notification.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            {notification.type === 'success' ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            )}
-          </svg>
-          <span className="text-sm font-medium">{notification.message}</span>
-          <button
-            onClick={() => setNotification(null)}
-            className="ml-2 text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Pull-to-refresh indicator */}
-      {isPulling && pullDistance > 0 && (
-        <div 
-          className="fixed top-0 left-0 right-0 flex items-center justify-center bg-white z-40 transition-all"
-          style={{ height: `${Math.min(pullDistance, 80)}px` }}
-        >
-          <RefreshCw 
-            className={`text-primary transition-transform ${pullDistance > 80 ? 'pull-refresh-spinner' : ''}`}
-            size={24}
-            style={{ transform: `rotate(${pullDistance * 2}deg)` }}
-          />
-        </div>
-      )}
-
-      {/* Fixed Header - Only Title and Refresh Button */}
-      <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 header-shadow z-50">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-                <span className="text-xl">💼</span>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">MLH CRM</h1>
-                <p className="text-xs text-secondary">Bilgi Yönetim Sistemi</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fetchConversations(true)}
-                disabled={refreshing}
-                className="p-2.5 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Listeyi yenile"
-                aria-label="Refresh"
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Modern Header */}
+      <ModernHeader />
+      
+      {/* Main Content with Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        <DashboardSidebar />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Notification Toast */}
+          {notification && (
+            <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
+              notification.type === 'success' 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <svg 
+                className={`w-5 h-5 ${notification.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                <RefreshCw 
-                  className={`${refreshing ? 'animate-spin' : ''}`}
-                  size={20}
-                />
-              </button>
+                {notification.type === 'success' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                )}
+              </svg>
+              <span className="text-sm font-medium">{notification.message}</span>
               <button
-                type="button"
-                onClick={() => signOut()}
-                className="p-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                title="Çıkış Yap"
-                aria-label="Logout"
+                onClick={() => setNotification(null)}
+                className="ml-2 text-gray-400 hover:text-gray-600"
               >
-                <Power size={20} />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-          </div>
-        </div>
-      </header>
+          )}
 
-      {/* Spacer for fixed header */}
-      <div className="h-[64px]"></div>
-
-      {/* Scrollable Content Area */}
-      <div 
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Search Bar - Finance App Style */}
-        <div className="px-6 py-4 bg-white">
-          <div className="relative">
-            <div className="relative bg-gray-50 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
-              <input
-                type="text"
-                placeholder="Müşteri, e-posta, telefon veya mesaj ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="w-full pl-12 pr-4 py-3 bg-transparent outline-none text-sm placeholder:text-secondary text-gray-900 rounded-xl"
+          {/* Pull-to-refresh indicator */}
+          {isPulling && pullDistance > 0 && (
+            <div 
+              className="absolute top-0 left-0 right-0 flex items-center justify-center bg-white z-40 transition-all"
+              style={{ height: `${Math.min(pullDistance, 80)}px` }}
+            >
+              <RefreshCw 
+                className={`text-primary transition-transform ${pullDistance > 80 ? 'pull-refresh-spinner' : ''}`}
+                size={24}
+                style={{ transform: `rotate(${pullDistance * 2}deg)` }}
               />
-              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-secondary">
-                🔍
-              </span>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-lg bg-gray-200 text-secondary flex items-center justify-center text-xs hover:bg-gray-300 transition-colors"
-                >
-                  ×
-                </button>
-              )}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Stats Cards - Finance App Style */}
-        <div className="px-6 py-4 bg-white">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-xs text-secondary uppercase tracking-wide mb-2 font-semibold">Toplam</div>
-              <div className="text-3xl font-bold text-gray-900">{conversations.length}</div>
-            </div>
-            <div className="bg-gradient-to-br from-primary/5 to-white border border-primary/20 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-xs text-primary uppercase tracking-wide mb-2 font-semibold">Yeni</div>
-              <div className="text-3xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
-            </div>
-          </div>
-          {/* Kanal filtresi: Tümü | E-posta | WhatsApp | Web */}
-          <div className="flex gap-2 mt-4 flex-wrap">
-            {(['all', 'email', 'whatsapp', 'web'] as const).map((ch) => (
-              <button
-                key={ch}
-                onClick={() => setChannelFilter(ch)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all shadow-sm ${
-                  channelFilter === ch
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-gray-50 text-secondary hover:bg-gray-100 border border-gray-200'
-                }`}
-              >
-                {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : ch === 'whatsapp' ? 'WhatsApp' : 'Web'}
-              </button>
-            ))}
-          </div>
-        </div>
+              {/* Scrollable Content Area */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto bg-white"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {/* Page Header */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                      💬 Konuşmalar
+                    </h1>
+                    <p className="text-gray-600 mt-2">
+                      Müşteri konuşmalarını takip edin ve yönetin
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fetchConversations(true)}
+                    disabled={refreshing}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    <RefreshCw 
+                      className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                    />
+                    Yenile
+                  </button>
+                </div>
+              </div>
 
-        {/* Conversations List - Modern Cards */}
-        <div className="px-6 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-secondary">Yükleniyor...</div>
-            </div>
-          ) : fetchError ? (
+              {/* Search Bar - Finance App Style */}
+              <div className="mb-6">
+                <div className="relative">
+                  <div className="relative bg-gray-50 border-2 border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition-all">
+                    <input
+                      type="text"
+                      placeholder="Müşteri, e-posta, telefon veya mesaj ara..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setSearchFocused(true)}
+                      onBlur={() => setSearchFocused(false)}
+                      className="w-full pl-12 pr-4 py-3 bg-transparent outline-none text-sm placeholder:text-gray-400 text-gray-900 rounded-xl"
+                    />
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                      🔍
+                    </span>
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-lg bg-gray-200 text-gray-600 flex items-center justify-center text-xs hover:bg-gray-300 transition-colors"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Cards - Finance App Style */}
+              <div className="mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-2 font-semibold">Toplam</div>
+                    <div className="text-3xl font-bold text-gray-900">{conversations.length}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-primary/5 to-white border-2 border-primary/20 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="text-xs text-primary uppercase tracking-wide mb-2 font-semibold">Yeni</div>
+                    <div className="text-3xl font-bold text-primary">{conversations.filter(c => !c.is_read).length}</div>
+                  </div>
+                </div>
+                {/* Kanal filtresi: Tümü | E-posta | WhatsApp | Web */}
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  {(['all', 'email', 'whatsapp', 'web'] as const).map((ch) => (
+                    <button
+                      key={ch}
+                      onClick={() => setChannelFilter(ch)}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all shadow-sm ${
+                        channelFilter === ch
+                          ? 'bg-primary text-white shadow-md'
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-2 border-gray-200'
+                      }`}
+                    >
+                      {ch === 'all' ? 'Tümü' : ch === 'email' ? 'E-posta' : ch === 'whatsapp' ? 'WhatsApp' : 'Web'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Conversations List - Modern Cards */}
+              <div>
+                {loading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-500">Yükleniyor...</div>
+                  </div>
+                ) : fetchError ? (
             <div className="flex flex-col items-center justify-center h-64 px-4">
               <div className="w-20 h-20 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mb-4 shadow-sm">
                 <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -483,9 +475,12 @@ export default function HomePage() {
                     </div>
                   </Link>
                 </div>
-              ))}
+                  ))}
+                </div>
+              )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

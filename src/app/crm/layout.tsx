@@ -1,7 +1,7 @@
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar"
 import ModernHeader from "@/components/dashboard/ModernHeader"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function CRMLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Modern Header */}
